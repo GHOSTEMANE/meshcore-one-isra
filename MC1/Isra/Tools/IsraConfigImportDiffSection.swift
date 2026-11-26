@@ -116,6 +116,23 @@ struct IsraConfigImportDiffSection: View {
     value.telemetryLoc = device.telemetryModeLoc
     value.telemetryEnv = device.telemetryModeEnv
     value.multiAcks = device.multiAcks
+    // The cached device can be stale (the device does not push changes made on it):
+    // compare against a fresh SELF_INFO when the radio answers.
+    if let info = try? await appState.services?.settingsService.getSelfInfo() {
+      value.name = info.name
+      value.frequencyKHz = UInt32((info.radioFrequency * 1000).rounded())
+      value.bandwidthHz = UInt32((info.radioBandwidth * 1000).rounded())
+      value.spreadingFactor = info.radioSpreadingFactor
+      value.codingRate = info.radioCodingRate
+      value.txPower = info.txPower
+      value.hasPosition = info.latitude != 0 || info.longitude != 0
+      value.manualAdd = info.manualAddContacts
+      value.advertPolicy = info.advertisementLocationPolicy
+      value.telemetryBase = info.telemetryModeBase
+      value.telemetryLoc = info.telemetryModeLocation
+      value.telemetryEnv = info.telemetryModeEnvironment
+      value.multiAcks = info.multiAcks
+    }
     if let store = appState.offlineDataStore {
       if let channels = try? await store.fetchChannels(radioID: device.radioID) {
         for channel in channels where !channel.name.isEmpty {

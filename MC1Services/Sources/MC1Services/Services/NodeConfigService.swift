@@ -466,6 +466,8 @@ public actor NodeConfigService {
   /// Sends only the other-settings fields present in the import.
   /// `advertisementType` is neither exported nor imported here (firmware-managed).
   func importOtherParams(_ imported: MeshCoreNodeConfig.OtherSettings) async throws {
+    // isra: re-read SELF_INFO so fields left out of the import go back with the radio's real values (an adopted identity just read it)
+    if IsraHooks.isInstalled, importedRadioID == nil { _ = try await settingsService.getSelfInfo() }
     // Named fields are merged inside the session serializer, so a missing key is not filled from a snapshot taken before admission.
     try await settingsService.setOtherParamsVerified(
       autoAddContacts: imported.manualAddContacts.map { $0 == 0 },
