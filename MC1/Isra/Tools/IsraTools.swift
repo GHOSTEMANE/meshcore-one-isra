@@ -1,12 +1,13 @@
 import SwiftUI
 
-/// Entry point of the isra tools (radio-writes journal).
+/// Entry point of the isra tools (radio-writes journal, airtime meter).
 @MainActor
 enum IsraTools {
   /// Called once the app's data is available, before the first connection.
   static func start(appState: AppState) {
     IsraRadioWriteJournal.shared.install()
     IsraRadioWriteJournalModel.shared.attach()
+    IsraAirtimeMeter.shared.start(appState: appState)
   }
 }
 

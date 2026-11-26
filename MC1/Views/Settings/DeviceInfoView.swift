@@ -82,6 +82,10 @@ struct DeviceInfoView: View {
 
         telemetrySection(for: device)
 
+        #if ISRA
+          IsraAirtimeCard() // isra: local TX airtime vs 10 %
+        #endif
+
         // Battery and storage
         Section {
           if let battery = appState.batteryMonitor.deviceBattery {

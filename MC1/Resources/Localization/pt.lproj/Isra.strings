@@ -167,3 +167,19 @@
 "Isra.Tools.Journal.Flag.location" = "localização";
 "Isra.Tools.Journal.Flag.environment" = "ambiente";
 "Isra.Tools.Journal.Flag.cli" = "CLI remota";
+
+/* MARK: - Tools: tempo de emissão do rádio */
+"Isra.Tools.Airtime.header" = "Tempo de emissão (este rádio)";
+"Isra.Tools.Airtime.footer" = "Medido pelo próprio rádio: segundos a emitir e tempo ligado, ambos desde o arranque (CMD_GET_STATS), lidos uma vez por minuto enquanto a app está ligada. Os contadores são segundos inteiros, por isso cada valor tem ±1 s no seu intervalo. Limite legal em 869,40–869,65 MHz: 10 %. O rádio também se limita sozinho com o fator de tempo de emissão (af), numa janela de 1 hora.";
+"Isra.Tools.Airtime.unsupported" = "O firmware deste rádio não indica o tempo de emissão (precisa do protocolo companion v8 ou mais recente).";
+"Isra.Tools.Airtime.waiting" = "À espera da primeira leitura (com o rádio ligado).";
+"Isra.Tools.Airtime.lastHour" = "Última hora";
+"Isra.Tools.Airtime.lastTenMinutes" = "Últimos 10 minutos";
+"Isra.Tools.Airtime.sinceConnect" = "Desde que ligou";
+"Isra.Tools.Airtime.sinceBoot" = "Desde o arranque do rádio";
+"Isra.Tools.Airtime.notEnough" = "ainda sem dados suficientes";
+"Isra.Tools.Airtime.detail" = "TX %ld s em %@ (±%@) · RX %@";
+"Isra.Tools.Airtime.partial" = "só %@ de leituras até agora";
+"Isra.Tools.Airtime.counters" = "Contadores";
+"Isra.Tools.Airtime.countersValue" = "TX %ld s · RX %ld s · ligado há %@";
+"Isra.Tools.Airtime.refresh" = "Ler agora";

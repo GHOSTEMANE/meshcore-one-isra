@@ -167,3 +167,19 @@
 "Isra.Tools.Journal.Flag.location" = "location";
 "Isra.Tools.Journal.Flag.environment" = "environment";
 "Isra.Tools.Journal.Flag.cli" = "remote CLI";
+
+/* MARK: - Tools: local airtime */
+"Isra.Tools.Airtime.header" = "Airtime (this radio)";
+"Isra.Tools.Airtime.footer" = "Measured by the radio itself: seconds spent transmitting and uptime, both since boot (CMD_GET_STATS), read once a minute while the app is connected. The counters are whole seconds, so each figure is ±1 s over its span. Legal limit in 869.40–869.65 MHz: 10 %. The radio also limits itself with its airtime factor over a 1-hour window.";
+"Isra.Tools.Airtime.unsupported" = "This radio's firmware does not report airtime (needs companion protocol v8+).";
+"Isra.Tools.Airtime.waiting" = "Waiting for the first reading (connected radio).";
+"Isra.Tools.Airtime.lastHour" = "Last hour";
+"Isra.Tools.Airtime.lastTenMinutes" = "Last 10 minutes";
+"Isra.Tools.Airtime.sinceConnect" = "Since connecting";
+"Isra.Tools.Airtime.sinceBoot" = "Since the radio booted";
+"Isra.Tools.Airtime.notEnough" = "not enough data yet";
+"Isra.Tools.Airtime.detail" = "TX %ld s in %@ (±%@) · RX %@";
+"Isra.Tools.Airtime.partial" = "only %@ of readings so far";
+"Isra.Tools.Airtime.counters" = "Counters";
+"Isra.Tools.Airtime.countersValue" = "TX %ld s · RX %ld s · up %@";
+"Isra.Tools.Airtime.refresh" = "Read now";

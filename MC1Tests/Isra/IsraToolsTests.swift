@@ -155,6 +155,43 @@ struct IsraRadioWriteJournalTests {
   }
 }
 
+@Suite("isra airtime math")
+struct IsraAirtimeMathTests {
+  private func sample(_ uptime: UInt32, tx: UInt32, rx: UInt32 = 0) -> IsraAirtimeSample {
+    IsraAirtimeSample(date: .now, uptime: uptime, txSeconds: tx, rxSeconds: rx)
+  }
+
+  @Test
+  func `last hour uses the oldest sample inside the hour`() {
+    let samples = (0...90).map { sample(UInt32(1000 + $0 * 60), tx: UInt32($0 * 3)) }
+    let window = IsraAirtimeMath.window(samples, maxSpan: 3600)
+    #expect(window?.span == 3600)
+    #expect(window?.txSeconds == 180)
+    #expect(abs((window?.txShare ?? 0) - 0.05) < 0.0001)
+  }
+
+  @Test
+  func `a reboot drops the older samples`() {
+    let samples = [sample(5000, tx: 400), sample(5060, tx: 405), sample(30, tx: 1), sample(400, tx: 20)]
+    let boot = IsraAirtimeMath.currentBoot(samples)
+    #expect(boot.count == 2)
+    #expect(IsraAirtimeMath.window(samples, maxSpan: 3600) == IsraAirtimeWindow(txSeconds: 19, rxSeconds: 0, span: 370))
+  }
+
+  @Test
+  func `too short a span gives no figure`() {
+    #expect(IsraAirtimeMath.window([sample(100, tx: 1), sample(160, tx: 2)], maxSpan: 600) == nil)
+    #expect(IsraAirtimeMath.sinceBoot(sample(60, tx: 1)) == nil)
+  }
+
+  @Test
+  func `since boot comes from one sample`() {
+    let window = IsraAirtimeMath.sinceBoot(sample(36000, tx: 360))
+    #expect(window?.txShare == 0.01)
+    #expect(window?.shareUncertainty == 1.0 / 36000)
+  }
+}
+
 private extension PacketBuilder {
   static func cliReplyFrameForTest(_ text: String) -> Data {
     Data([ResponseCode.cliReply.rawValue]) + Data(text.utf8)
