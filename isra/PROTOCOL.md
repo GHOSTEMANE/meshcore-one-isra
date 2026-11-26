@@ -45,7 +45,20 @@ Firmware -> host (reply):
          bit 0  phone_loc setting ("Phone pos") is on
          bit 1  GPS master is on
          bit 2  GPS duty cycle (GPS pwr) is on
+[8]    advert location policy (u8, as in SELF_INFO: 0 none, 1 share, 2 prefs)
 ```
+
+### 0xE1 / 0x11  STATE  (firmware -> host, push; to any host with a non-zero cap)
+
+```
+[0] 0xE1
+[1] 0x11
+[2] device state flags (as HELLO reply [7])
+[3] advert location policy (as HELLO reply [8])
+```
+
+Pushed when either value changes on the device (menu, console, any link), at most
+once per second, so the app never shows a stale policy or Phone pos / GPS state.
 
 The app sends HELLO after `CMD_APP_START` on every connection, before its first
 `CMD_SYNC_NEXT_MESSAGE`. The caps in effect are `host & firmware`.
@@ -150,7 +163,13 @@ They are delivered through the offline queue (`PUSH_CODE_MSG_WAITING` ->
 - Queue pressure: when the queue is full, the oldest device-sent entry
   (SENT_DM / SENT_CHANNEL / SENT_STATUS) is evicted first, then the oldest channel
   message; a SENT_STATUS never evicts anything (it is dropped instead).
-- Device-sent DMs use `getCurrentTimeUnique()`.
+- Timestamps never collide between the two senders (the ack code is
+  SHA-256 of timestamp, attempt, text and sender key, so the same text sent from
+  the device and from the app in the same second would share it): device-sent DMs
+  always carry an **odd** timestamp (unique, `getCurrentTimeUnique()` moved up to the
+  next odd second), and a host with SENT_MSGS in effect stamps its own DMs with an
+  **even** timestamp (moved up to the next even second, still increasing). At most
+  one second of skew.
 - Live: when a device-sent DM is acked and a host with the cap is connected, the
   firmware also pushes `PUSH_CODE_SEND_CONFIRMED` (0x82) with the ack code and
   round trip, as for host-sent DMs. Device-sent DMs are not added to

@@ -25,9 +25,12 @@ struct IsraLocationSettingsSection: View {
   @State private var retryAlert = RetryAlertState()
   @State private var isSaving = false
 
-  /// The radio's advert location policy byte, as last read from SELF_INFO.
+  /// The radio's advert location policy byte: live from the isra firmware (HELLO reply,
+  /// STATE push on every change on the device); otherwise as last read from SELF_INFO.
   private var advertPolicy: UInt8 {
-    appState.connectedDevice?.advertLocationPolicy ?? 0
+    let device = appState.connectedDevice
+    return IsraCenter.shared.liveAdvertPolicy(devicePublicKey: device?.publicKey)
+      ?? device?.advertLocationPolicy ?? 0
   }
 
   var body: some View {

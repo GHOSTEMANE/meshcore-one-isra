@@ -172,3 +172,69 @@ struct IsraProtocolTests {
     }
   }
 }
+
+@Suite("isra protocol: live device state and DM timestamps")
+struct IsraLiveStateTests {
+  @Test
+  func `hello reply carries the advert policy in byte 8`() {
+    guard case let .helloReply(reply)? = IsraProtocol.parse(Data([0xE1, 0x00, 0x03, 0, 0, 0, 0x02, 0x05, 0x02])) else {
+      Issue.record("expected hello reply")
+      return
+    }
+    #expect(reply.state == [.phonePositionSetting, .gpsDutyCycle])
+    #expect(reply.advertPolicy == 2)
+  }
+
+  @Test
+  func `hello reply without byte 8 has an unknown policy`() {
+    guard case let .helloReply(reply)? = IsraProtocol.parse(Data([0xE1, 0x00, 0x03, 0, 0, 0, 0x02, 0x07])) else {
+      Issue.record("expected hello reply")
+      return
+    }
+    #expect(reply.advertPolicy == nil)
+    #expect(reply == IsraProtocol.HelloReply(caps: [.sentMessages, .phonePosition], revision: 2, state: [.phonePositionSetting, .gpsOn, .gpsDutyCycle]))
+  }
+
+  @Test
+  func `STATE push parses flags and policy`() {
+    let event = PacketParser.parse(Data([0xE1, 0x11, 0x03, 0x01]))
+    #expect(IsraProtocol.frame(from: event) == .state([.phonePositionSetting, .gpsOn], advertPolicy: 1))
+    #expect(IsraProtocol.parse(Data([0xE1, 0x11, 0x03])) == nil)
+  }
+
+  @Test
+  func `STATE push is never taken as a drain reply`() {
+    let raw = Data([0xE1, 0x11, 0x00, 0x00])
+    guard case let .parseFailure(data, reason) = PacketParser.parse(raw) else {
+      Issue.record("expected parse failure")
+      return
+    }
+    #expect(!IsraProtocol.isDrainSkipFrame(data: data, reason: reason))
+  }
+
+  @Test
+  func `live state follows frames in arrival order`() {
+    var live = IsraProtocol.LiveState()
+    #expect(live.flags == nil && live.advertPolicy == nil)
+    live.apply(.helloReply(.init(caps: .phonePosition, revision: 2, state: .gpsOn, advertPolicy: 0)))
+    #expect(live == .init(flags: .gpsOn, advertPolicy: 0))
+    live.apply(.state([.gpsOn, .gpsDutyCycle], advertPolicy: 2))
+    #expect(live == .init(flags: [.gpsOn, .gpsDutyCycle], advertPolicy: 2))
+    // A reply without byte 8 keeps the known policy.
+    live.apply(.helloReply(.init(caps: .phonePosition, revision: 2, state: [])))
+    #expect(live == .init(flags: [], advertPolicy: 2))
+    live.apply(.positionRequest)
+    #expect(live == .init(flags: [], advertPolicy: 2))
+  }
+
+  @Test
+  func `host DM timestamps are even and strictly increasing`() {
+    #expect(IsraProtocol.evenHostTimestamp(now: 100, after: nil) == 100)
+    #expect(IsraProtocol.evenHostTimestamp(now: 101, after: nil) == 102)
+    #expect(IsraProtocol.evenHostTimestamp(now: 101, after: 98) == 102)
+    #expect(IsraProtocol.evenHostTimestamp(now: 101, after: 102) == 104)
+    #expect(IsraProtocol.evenHostTimestamp(now: 100, after: 100) == 102)
+    #expect(IsraProtocol.evenHostTimestamp(now: 90, after: 101) == 102)
+    #expect(IsraProtocol.evenHostTimestamp(now: UInt32.max, after: nil) == UInt32.max - 1)
+  }
+}

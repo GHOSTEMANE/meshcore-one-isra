@@ -30,12 +30,13 @@ struct IsraPhonePosSection: View {
         if enabled {
           permissionRow
           statusRow(tr("firmware"), value: firmwareText, ok: firmwareSupports)
-          if let reply = center.firmwareReply, firmwareSupports {
-            statusRow(tr("deviceSetting"), value: onOff(reply.state.contains(.phonePositionSetting)),
-                      ok: reply.state.contains(.phonePositionSetting))
-            statusRow(tr("gps"), value: gpsText(reply.state),
-                      ok: reply.state.isSuperset(of: [.gpsOn, .gpsDutyCycle]))
-            if !reply.state.isSuperset(of: [.phonePositionSetting, .gpsOn, .gpsDutyCycle]) {
+          // Live: HELLO reply, then every STATE push from the radio.
+          if firmwareSupports, let state = center.deviceState {
+            statusRow(tr("deviceSetting"), value: onOff(state.contains(.phonePositionSetting)),
+                      ok: state.contains(.phonePositionSetting))
+            statusRow(tr("gps"), value: gpsText(state),
+                      ok: state.isSuperset(of: [.gpsOn, .gpsDutyCycle]))
+            if !state.isSuperset(of: [.phonePositionSetting, .gpsOn, .gpsDutyCycle]) {
               Text(tr("deviceHint"))
                 .font(.footnote)
                 .foregroundStyle(.secondary)

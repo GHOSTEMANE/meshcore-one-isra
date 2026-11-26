@@ -17,6 +17,9 @@ final class IsraCenter {
   private(set) var hello: IsraHelloState = .notSent
   /// Public key of the connected device, nil while disconnected.
   private(set) var devicePublicKey: Data?
+  /// Device state flags and advert location policy as the firmware last reported them
+  /// (HELLO reply byte [7] / [8], STATE push). Empty with stock firmware or while unknown.
+  private(set) var liveState = IsraProtocol.LiveState()
 
   /// Phone position for telemetry (section 2).
   let phonePos = IsraPhonePosService()
@@ -51,6 +54,18 @@ final class IsraCenter {
     session != nil
   }
 
+  /// "Phone pos" / GPS / GPS pwr on the radio, live; nil while unknown.
+  var deviceState: IsraProtocol.DeviceState? {
+    liveState.flags ?? firmwareReply?.state
+  }
+
+  /// The radio's advert location policy as the firmware reports it live (HELLO, STATE
+  /// push), when connected to that device; nil while unknown: use SELF_INFO then.
+  func liveAdvertPolicy(devicePublicKey key: Data?) -> UInt8? {
+    guard let key, key == devicePublicKey else { return nil }
+    return liveState.advertPolicy
+  }
+
   // MARK: - Connection lifecycle
 
   /// Called when the app has wired a new connection.
@@ -64,6 +79,9 @@ final class IsraCenter {
     guard self.session === session else { return }
     await startListening(to: session)
     guard self.session === session else { return }
+    // Read after subscribing: a STATE push from here on reaches the listener.
+    liveState = await session.israLiveState
+    guard self.session === session else { return }
     updatePhonePosBinding(sendNow: true)
   }
 
@@ -74,6 +92,7 @@ final class IsraCenter {
     session = nil
     devicePublicKey = nil
     hello = .notSent
+    liveState = IsraProtocol.LiveState()
   }
 
   /// Sends HELLO again (new host caps, or to refresh the device state flags).
@@ -91,6 +110,7 @@ final class IsraCenter {
     }
     guard self.session === session else { return }
     hello = state
+    await refreshLiveState(from: session)
     updatePhonePosBinding(sendNow: false)
   }
 
@@ -124,7 +144,7 @@ final class IsraCenter {
   private func startListening(to session: MeshCoreSession) async {
     let filter = EventFilter { event in
       switch IsraProtocol.frame(from: event) {
-      case .helloReply?, .positionRequest?: true
+      case .helloReply?, .positionRequest?, .state?: true
       default: false
       }
     }
@@ -140,6 +160,17 @@ final class IsraCenter {
         await self?.handle(frame, from: session)
       }
     }
+  }
+
+  /// The session records HELLO replies and STATE pushes in arrival order; copying its
+  /// state (not the frame at hand) keeps the newest even if events are handled late.
+  private func refreshLiveState(from session: MeshCoreSession) async {
+    let live = await session.israLiveState
+    guard self.session === session, live != liveState else { return }
+    let flagsChanged = live.flags != liveState.flags
+    liveState = live
+    // Phone pos / GPS changed on the radio: a pause after a refusal no longer applies.
+    if flagsChanged, phonePos.isBound { phonePos.resetBackoff() }
   }
 
   private func stopListening() {
@@ -158,7 +189,10 @@ final class IsraCenter {
       // A HELLO the session sent after a mid-session APP_START (settings changes).
       let hostCaps = devicePublicKey.map { IsraSettings.hostCaps(devicePublicKey: $0) } ?? []
       hello = .supported(reply, hostCaps: hostCaps)
+      await refreshLiveState(from: session)
       updatePhonePosBinding(sendNow: false)
+    case .state:
+      await refreshLiveState(from: session)
     case .positionRequest:
       phonePos.handlePositionRequest()
     case .sentContactMessage, .sentChannelMessage, .sentMessageStatus, .unknown:

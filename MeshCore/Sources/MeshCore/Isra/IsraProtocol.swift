@@ -20,6 +20,8 @@ public enum IsraProtocol {
     case hello = 0x00
     case phonePosition = 0x01
     case positionRequest = 0x10
+    /// Device state push: flags and advert location policy, on every change.
+    case state = 0x11
     /// Device-sent messages (section 3), replies to `CMD_SYNC_NEXT_MESSAGE`.
     case sentContactMessage = 0x20
     case sentChannelMessage = 0x21
@@ -36,7 +38,7 @@ public enum IsraProtocol {
     public static let phonePosition = Caps(rawValue: 1 << 1)
   }
 
-  /// Device state flags in the HELLO reply.
+  /// Device state flags in the HELLO reply and the STATE push.
   public struct DeviceState: OptionSet, Sendable, Hashable {
     public let rawValue: UInt8
     public init(rawValue: UInt8) { self.rawValue = rawValue }
@@ -53,11 +55,42 @@ public enum IsraProtocol {
     public let caps: Caps
     public let revision: UInt8
     public let state: DeviceState
+    /// Byte [8], advert location policy as in SELF_INFO. nil when the reply is shorter
+    /// (firmware from before the byte was appended).
+    public let advertPolicy: UInt8?
 
-    public init(caps: Caps, revision: UInt8, state: DeviceState) {
+    public init(caps: Caps, revision: UInt8, state: DeviceState, advertPolicy: UInt8? = nil) {
       self.caps = caps
       self.revision = revision
       self.state = state
+      self.advertPolicy = advertPolicy
+    }
+  }
+
+  /// The device state the firmware last reported on this link (HELLO reply, STATE push),
+  /// in arrival order. nil fields are unknown: the app falls back to SELF_INFO.
+  public struct LiveState: Sendable, Equatable {
+    public var flags: DeviceState?
+    public var advertPolicy: UInt8?
+
+    public init(flags: DeviceState? = nil, advertPolicy: UInt8? = nil) {
+      self.flags = flags
+      self.advertPolicy = advertPolicy
+    }
+
+    /// Applies a HELLO reply or STATE push; other frames leave it unchanged.
+    /// A HELLO reply without byte [8] keeps the known policy.
+    public mutating func apply(_ frame: Frame) {
+      switch frame {
+      case let .helloReply(reply):
+        flags = reply.state
+        if let policy = reply.advertPolicy { advertPolicy = policy }
+      case let .state(state, policy):
+        flags = state
+        advertPolicy = policy
+      default:
+        break
+      }
     }
   }
 
@@ -102,6 +135,8 @@ public enum IsraProtocol {
   public enum Frame: Sendable, Equatable {
     case helloReply(HelloReply)
     case positionRequest
+    /// 0xE1 / 0x11 STATE push.
+    case state(DeviceState, advertPolicy: UInt8)
     case sentContactMessage(SentContactMessage)
     case sentChannelMessage(SentChannelMessage)
     case sentMessageStatus(SentMessageStatus)
@@ -176,6 +211,20 @@ public enum IsraProtocol {
     return data
   }
 
+  // MARK: - Timestamps
+
+  /// Timestamp of a direct message sent by a host with SENT_MSGS in effect: `now`
+  /// moved up to the next even second, and strictly after `last` (the previous one this
+  /// host picked), so it never equals a device-sent DM's (always odd) nor an earlier
+  /// host DM's. The ACK code hashes timestamp, attempt, text and sender key only.
+  public static func evenHostTimestamp(now: UInt32, after last: UInt32?) -> UInt32 {
+    var candidate = UInt64(now)
+    if let last { candidate = max(candidate, UInt64(last) + 1) }
+    if candidate % 2 != 0 { candidate += 1 }
+    // Year 2106: stay in range rather than trap.
+    return UInt32(min(candidate, UInt64(UInt32.max - 1)))
+  }
+
   // MARK: - Parsing
 
   /// Whether a parse failure is a whole frame with a response code the parser does not know.
@@ -228,11 +277,16 @@ public enum IsraProtocol {
       return .helloReply(HelloReply(
         caps: Caps(rawValue: data.readUInt32LE(at: 2)),
         revision: data[6],
-        state: DeviceState(rawValue: data[7])
+        state: DeviceState(rawValue: data[7]),
+        advertPolicy: data.count >= 9 ? data[8] : nil
       ))
 
     case .positionRequest:
       return .positionRequest
+
+    case .state:
+      guard data.count >= 4 else { return nil }
+      return .state(DeviceState(rawValue: data[2]), advertPolicy: data[3])
 
     case .sentContactMessage:
       // Draft frame 30 with [0] replaced by 0xE1, 0x20: every offset +1.

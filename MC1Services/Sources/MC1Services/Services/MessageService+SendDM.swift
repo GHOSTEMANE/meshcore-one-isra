@@ -18,7 +18,7 @@ public extension MessageService {
     try validateDirectMessage(text: text, to: contact)
 
     let messageID = UUID()
-    let timestamp = UInt32(Date().timeIntervalSince1970)
+    let timestamp = await israNewDirectMessageTimestamp() // isra: even with SENT_MSGS
 
     let messageDTO = createOutgoingMessage(
       id: messageID,
@@ -164,7 +164,7 @@ public extension MessageService {
     defer { await stopPlainTextLease(sendLease) }
 
     let messageID = UUID()
-    let timestamp = UInt32(Date().timeIntervalSince1970)
+    let timestamp = await israNewDirectMessageTimestamp() // isra: even with SENT_MSGS
 
     // Save message to store as pending first
     let messageDTO = createOutgoingMessage(
@@ -330,7 +330,7 @@ public extension MessageService {
       }
       wireTimestamp = existingMessage.timestamp
     } else {
-      wireTimestamp = UInt32(Date().timeIntervalSince1970)
+      wireTimestamp = await israNewDirectMessageTimestamp() // isra: even with SENT_MSGS
     }
 
     do {

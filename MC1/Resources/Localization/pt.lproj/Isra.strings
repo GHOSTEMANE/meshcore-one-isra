@@ -72,7 +72,7 @@
 "Isra.UI.Location.advertPos.off" = "Desligada";
 "Isra.UI.Location.advertPos.on" = "Ligada";
 "Isra.UI.Location.advertPos.warning" = "Os adverts deste rádio levam a posição a toda a rede. Para desligar, no aparelho: Settings › All settings › Privacy › Advert pos.";
-"Isra.UI.Location.footer" = "A posição nos adverts só se muda no aparelho (Settings › All settings › Privacy › Advert pos). A app mostra o valor lido do rádio da última vez e nunca o altera. Enviar um advert pela app nunca grava a posição do telemóvel no rádio nem liga o GPS dele: o advert leva o que o rádio já tem.";
+"Isra.UI.Location.footer" = "A posição nos adverts só se muda no aparelho (Settings › All settings › Privacy › Advert pos). Com o firmware isra o rádio avisa a app sempre que ela muda, por isso o valor mostrado é o atual; com outro firmware é o lido da última vez. A app nunca o altera. Enviar um advert pela app nunca grava a posição do telemóvel no rádio nem liga o GPS dele: o advert leva o que o rádio já tem.";
 
 // MARK: - Proteções do rádio (Isra.UI.Reboot / Isra.UI.Pin / Isra.UI.OTA)
 "Isra.UI.Reboot.blocked" = "O Solo não deve ser reiniciado por software: desliga o interruptor 15 s.";

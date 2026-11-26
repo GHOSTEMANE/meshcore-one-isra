@@ -72,7 +72,7 @@
 "Isra.UI.Location.advertPos.off" = "Off";
 "Isra.UI.Location.advertPos.on" = "On";
 "Isra.UI.Location.advertPos.warning" = "This radio's adverts carry its position to the whole network. To turn it off, on the device: Settings › All settings › Privacy › Advert pos.";
-"Isra.UI.Location.footer" = "The position in adverts is changed on the device only (Settings › All settings › Privacy › Advert pos). The app shows the radio's value as last read and never changes it. Sending an advert from the app never writes the phone's position to the radio nor turns its GPS on: the advert carries what the radio already has.";
+"Isra.UI.Location.footer" = "The position in adverts is changed on the device only (Settings › All settings › Privacy › Advert pos). With the isra firmware the radio tells the app whenever it changes, so the value shown is current; with other firmware it is the one last read. The app never changes it. Sending an advert from the app never writes the phone's position to the radio nor turns its GPS on: the advert carries what the radio already has.";
 
 // MARK: - Radio protections (Isra.UI.Reboot / Isra.UI.Pin / Isra.UI.OTA)
 "Isra.UI.Reboot.blocked" = "The Solo must not be rebooted by software: turn the switch off for 15 s.";

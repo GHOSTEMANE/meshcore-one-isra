@@ -80,12 +80,20 @@ struct IsraSessionState: Sendable {
   /// session: on BLE the firmware keeps the cap until the link drops, even if a later
   /// HELLO goes unanswered.
   var sentMessagesNegotiated = false
+  /// Device state from the HELLO replies and STATE pushes received on this session.
+  var live = IsraProtocol.LiveState()
 }
 
 public extension MeshCoreSession {
   /// Outcome of the last HELLO on this session.
   var israHello: IsraHelloState {
     isra.hello
+  }
+
+  /// Device state flags and advert location policy as the firmware last reported them
+  /// (HELLO reply, 0xE1 / 0x11 STATE push), in arrival order. Empty with stock firmware.
+  var israLiveState: IsraProtocol.LiveState {
+    isra.live
   }
 
   /// Tells the session whether its link keeps the host caps across APP_START (BLE) or
@@ -139,6 +147,17 @@ public extension MeshCoreSession {
 }
 
 extension MeshCoreSession {
+  /// Every received frame, before parsing: the radio-writes journal tap, and the device
+  /// state of HELLO replies and STATE pushes, recorded in arrival order (a STATE push can
+  /// overtake the HELLO exchange's own bookkeeping). Inert unless the app installed
+  /// ``IsraHooks``.
+  func israNoteIncoming(_ data: Data) {
+    IsraFrameTap.noteIncoming(data)
+    guard data.first == IsraProtocol.code, data.count >= 2, IsraHooks.isInstalled,
+          let frame = IsraProtocol.parse(data) else { return }
+    isra.live.apply(frame)
+  }
+
   /// HELLO must not wait as long as ordinary commands: it runs inside the connection's
   /// APP_START, which the connection manager bounds to 10 s.
   static let israHelloTimeout: TimeInterval = 3

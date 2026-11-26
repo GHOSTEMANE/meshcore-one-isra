@@ -195,6 +195,55 @@ struct IsraSessionTests {
   }
 
   @Test
+  func `session records hello byte 8 and STATE pushes in arrival order`() async throws {
+    try await withTestProvider {
+      let transport = MockTransport()
+      let session = MeshCoreSession(
+        transport: transport,
+        configuration: SessionConfiguration(defaultTimeout: 10, clientIdentifier: "MCTst")
+      )
+      #expect(await session.israLiveState == IsraProtocol.LiveState())
+      let startTask = Task { try await session.start() }
+      try await waitUntil("appStart") { await transport.sentData.count == 1 }
+      await transport.simulateReceive(makeSelfInfoPacket(key: helloKey))
+      try await waitUntil("hello") { await transport.sentData.count == 2 }
+      await transport.simulateReceive(Data([0xE1, 0x00, 0x03, 0x00, 0x00, 0x00, 0x02, 0x07, 0x00]))
+      try await startTask.value
+      #expect(await session.israLiveState == .init(flags: [.phonePositionSetting, .gpsOn, .gpsDutyCycle], advertPolicy: 0))
+      if case let .supported(reply, _) = await session.israHello {
+        #expect(reply.advertPolicy == 0)
+      } else {
+        Issue.record("expected a supported hello")
+      }
+
+      // The policy and GPS changed on the device.
+      await transport.simulateReceive(Data([0xE1, 0x11, 0x01, 0x02]))
+      try await waitUntil("state push") { await session.israLiveState.advertPolicy == 2 }
+      #expect(await session.israLiveState.flags == .phonePositionSetting)
+      await session.stop()
+    }
+  }
+
+  @Test
+  func `without the hooks a STATE push changes nothing`() async throws {
+    let transport = MockTransport()
+    let session = MeshCoreSession(
+      transport: transport,
+      configuration: SessionConfiguration(defaultTimeout: 10, clientIdentifier: "MCTst")
+    )
+    try await startSession(session, transport: transport, key: Data(repeating: 0x05, count: 32))
+    await transport.simulateReceive(Data([0xE1, 0x11, 0x07, 0x02]))
+    // A later frame, so the push above has been handled.
+    let ping = Task { try await session.sendAppStart() }
+    try await waitUntil("appStart") { await transport.sentData.count == 2 }
+    await transport.simulateReceive(makeSelfInfoPacket(key: Data(repeating: 0x05, count: 32)))
+    _ = try await ping.value
+    #expect(await session.israLiveState == IsraProtocol.LiveState())
+    #expect(await transport.sentData.count == 2)
+    await session.stop()
+  }
+
+  @Test
   func `other devices get no hello`() async throws {
     try await withTestProvider {
       let transport = MockTransport()
