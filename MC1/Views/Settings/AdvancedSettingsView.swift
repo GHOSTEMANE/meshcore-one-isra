@@ -42,6 +42,7 @@ struct AdvancedSettingsView: View {
       // Direct Messages Settings
       DirectMessagesSettingsSection()
 
+
       PathFallbackSettingsSection()
 
       // Battery Curve
@@ -57,6 +58,10 @@ struct AdvancedSettingsView: View {
 
       // Config Export/Import
       ConfigExportImportSection()
+
+      #if ISRA
+        IsraToolsSettingsSection() // isra: radio-writes journal
+      #endif
 
       // Device Actions
       #if ISRA // isra: no software reboot of the paired radio

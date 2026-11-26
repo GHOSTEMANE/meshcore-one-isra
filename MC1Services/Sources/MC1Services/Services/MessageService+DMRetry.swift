@@ -74,6 +74,7 @@ extension MessageService {
         logger.info("Resetting path to flood before attempt \(wireAttempt)")
         didResetPath = true
         do {
+          try await IsraWriteTrigger.$current.withValue(IsraWriteTrigger.dmRetry) { // isra: journal trigger
           if let contactService {
             try await contactService.resetPath(radioID: contact.radioID, publicKey: contact.publicKey)
           } else {
@@ -85,6 +86,7 @@ extension MessageService {
               outPath: Data()
             )
           }
+          } // isra
           if try await dataStore.fetchContact(radioID: contact.radioID, publicKey: contact.publicKey) != nil {
             statusEventBroadcaster.yield(.routingChanged(contactID: contact.id, isFlood: true))
           }

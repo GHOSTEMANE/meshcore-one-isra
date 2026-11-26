@@ -10,13 +10,17 @@ extension MeshCoreSession {
     guard !identityImportInProgress || identityImport else { throw CancellationError() }
     guard sessionIsRunning, !floodScopeRecoveryRequired else { throw CancellationError() }
     try beforeSend()
+    IsraFrameTap.noteOutgoing(data) // isra: radio-writes journal
     do {
       try await transport.send(data)
     } catch MeshTransportError.cancelledBeforeSubmission {
+      IsraFrameTap.noteOutgoing(data, .notSent) // isra
       throw CancellationError()
     } catch {
       if !Self.linkRejectedWriteBeforeSubmission(error) {
         await requestResponseSerializer.noteUncertainResponseHistory()
+      } else {
+        IsraFrameTap.noteOutgoing(data, .notSent) // isra
       }
       throw error
     }
@@ -25,6 +29,7 @@ extension MeshCoreSession {
   func sendSessionDataWithoutResponse(_ data: Data) async throws {
     guard !identityImportInProgress else { throw CancellationError() }
     guard sessionIsRunning, !floodScopeRecoveryRequired else { throw CancellationError() }
+    IsraFrameTap.noteOutgoing(data) // isra: radio-writes journal
     do {
       try await transport.sendWithoutResponse(data)
     } catch MeshTransportError.cancelledBeforeSubmission {

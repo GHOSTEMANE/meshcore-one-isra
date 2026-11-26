@@ -215,6 +215,7 @@ public extension MeshCoreSession {
     guard gate.beginSubmission() else { return .notSubmitted(.cancelled) }
 
     let sendFailed: Bool
+    IsraFrameTap.noteOutgoing(PacketBuilder.runCliCommand(PacketBuilder.powerOffCommand)) // isra: radio-writes journal
     do {
       try await transport.send(PacketBuilder.runCliCommand(PacketBuilder.powerOffCommand))
       sendFailed = false

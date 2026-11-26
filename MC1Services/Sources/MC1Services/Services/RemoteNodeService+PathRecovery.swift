@@ -23,7 +23,9 @@ extension RemoteNodeService {
       let firstTimeout = error
       logger.info("\(operationName): direct-path timeout; resetting path to flood and retrying once")
       do {
-        try await resetContactPathToFlood(radioID: radioID, publicKey: publicKey)
+        try await IsraWriteTrigger.$current.withValue(IsraWriteTrigger.pathRecovery) { // isra: journal trigger
+          try await resetContactPathToFlood(radioID: radioID, publicKey: publicKey)
+        }
       } catch is CancellationError {
         throw CancellationError()
       } catch {

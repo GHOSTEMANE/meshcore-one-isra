@@ -131,6 +131,10 @@ struct MC1App: App {
             .displayFrequency(.immediate)
           ])
 
+          #if ISRA
+            IsraTools.start(appState: appState) // isra: tools (MC1/Isra/Tools/IsraTools.swift)
+          #endif
+
           #if DEBUG
             if ProcessInfo.processInfo.isScreenshotMode {
               await setupScreenshotMode()

@@ -555,6 +555,7 @@ public actor MeshCoreSession: MeshCoreSessionProtocol {
   /// No reassembly or buffering is needed - we parse each packet directly.
   private func handleReceivedData(_ data: Data) async {
     guard !data.isEmpty else { return }
+    IsraFrameTap.noteIncoming(data) // isra: radio-writes journal
 
     var event = PacketParser.parse(data)
 

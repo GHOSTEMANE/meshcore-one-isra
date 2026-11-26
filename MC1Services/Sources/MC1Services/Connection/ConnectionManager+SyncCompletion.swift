@@ -1,4 +1,5 @@
 import Foundation
+import MeshCore // isra: IsraWriteTrigger
 
 extension ConnectionManager {
   func owns(_ link: ConnectionLink) -> Bool {
@@ -59,12 +60,16 @@ extension ConnectionManager {
       guard self.ownsRuntime(link), !Task.isCancelled else { return false }
       if !link.synthetic, !link.timeEffectsClaimed {
         link.timeEffectsClaimed = true
-        await self.syncDeviceTimeIfNeeded(for: link)
+        await IsraWriteTrigger.$current.withValue(IsraWriteTrigger.clockSync) { // isra: journal trigger
+          await self.syncDeviceTimeIfNeeded(for: link)
+        }
         guard self.ownsRuntime(link), !Task.isCancelled else { return false }
-        await RadioTimezone.syncIfNeeded(
-          supportsRadioCLI: link.device.supportsRadioCLI, secondsFromGMT: TimeZone.current.secondsFromGMT(),
-          settings: link.services.settingsService, stillCurrent: { self.ownsRuntime(link) && !Task.isCancelled }
-        )
+        await IsraWriteTrigger.$current.withValue(IsraWriteTrigger.timezoneSync) { // isra: journal trigger
+          await RadioTimezone.syncIfNeeded(
+            supportsRadioCLI: link.device.supportsRadioCLI, secondsFromGMT: TimeZone.current.secondsFromGMT(),
+            settings: link.services.settingsService, stillCurrent: { self.ownsRuntime(link) && !Task.isCancelled }
+          )
+        }
       }
       guard self.ownsRuntime(link), !Task.isCancelled else { return false }
       guard let usableSyncResult = link.usableSyncResult else { return true }
