@@ -36,8 +36,13 @@ extension CLIToolViewModel {
     case let .setMultiAcks(value): await runSetMultiAcks(value)
     case let .setPathHashMode(mode): await runSetPathHashMode(mode)
     case .getCustomVars: await runGetCustomVars(key: nil)
-    case let .getCustomVar(key): await runGetCustomVars(key: key)
-    case let .setCustomVar(key, value): await runSetCustomVar(key: key, value: value)
+    #if ISRA // isra: keys the app does not know go to the radio CLI (cmd 66)
+      case let .getCustomVar(key): await israGetVar(key)
+      case let .setCustomVar(key, value): await israSetVar(key: key, value: value)
+    #else
+      case let .getCustomVar(key): await runGetCustomVars(key: key)
+      case let .setCustomVar(key, value): await runSetCustomVar(key: key, value: value)
+    #endif
     }
   }
 

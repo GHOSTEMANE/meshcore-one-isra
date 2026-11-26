@@ -24,6 +24,48 @@ extension CLIToolViewModel {
     }
   }
 
+  // MARK: - get / set of keys the app does not know
+
+  /// `get <key>` for a key that is neither a typed key nor one of the radio's custom
+  /// vars: sent to the radio CLI (cmd 66) instead of answering "Unknown var" locally,
+  /// so firmware console keys (e.g. Solo's `telemetry.loc.phone`) work.
+  func israGetVar(_ key: String) async {
+    guard let settingsService else { return israOutputError(L10n.Tools.Tools.Cli.notConnected) }
+    let vars = try? await settingsService.getCustomVars()
+    if let vars {
+      completionEngine.updateCustomVarKeys(Array(vars.keys))
+      if let value = vars[key] { return israOutput(LocalCommandOutput.value(value)) }
+    }
+    if connectedDevice?.supportsRadioCLI == true {
+      await runRadioCLI("get \(key)", intent: captureRadioCLIIntent())
+    } else if vars != nil {
+      israOutput(LocalCommandOutput.unknownVar(key))
+    } else {
+      israOutputError(L10n.Tools.Tools.Cli.notConnected)
+    }
+  }
+
+  /// `set <key> <value>`: a custom var the radio lists is written as one; any other
+  /// key goes to the radio CLI (cmd 66).
+  func israSetVar(key: String, value: String) async {
+    guard let settingsService else { return israOutputError(L10n.Tools.Tools.Cli.notConnected) }
+    let vars = try? await settingsService.getCustomVars()
+    if let vars { completionEngine.updateCustomVarKeys(Array(vars.keys)) }
+    let isCustomVar = vars?[key] != nil
+    if !isCustomVar, connectedDevice?.supportsRadioCLI == true {
+      return await runRadioCLI("set \(key) \(value)", intent: captureRadioCLIIntent())
+    }
+    do {
+      try await settingsService.setCustomVar(key: key, value: value)
+      israOutput(LocalCommandOutput.customVarSet(key: key, value: value))
+    } catch let SettingsServiceError.sessionError(meshError)
+      where meshError.deviceErrorCode == .illegalArgument {
+      israOutput(LocalCommandOutput.unknownCustomVar)
+    } catch {
+      israOutputError(error.localizedDescription)
+    }
+  }
+
   func israOutput(_ text: String) {
     guard !Task.isCancelled else { return }
     appendOutput(text, type: .response)
