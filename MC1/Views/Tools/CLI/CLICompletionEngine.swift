@@ -84,7 +84,11 @@ final class CLICompletionEngine {
 
   private static let gpsAdvertValues = ["none", "share", "prefs"]
 
-  private static let startSubcommands = ["ota"]
+  #if ISRA // isra: no OTA
+    private static let startSubcommands: [String] = []
+  #else
+    private static let startSubcommands = ["ota"]
+  #endif
 
   private static let regionListValues = ["allowed", "denied"]
 
@@ -345,6 +349,9 @@ final class CLICompletionEngine {
       commands.append(contentsOf: remote)
     }
 
+    #if ISRA // isra: hide `start` (OTA) and the paired radio's `reboot`
+      commands.removeAll { IsraCLIGuard.hidesCompletion($0, isLocal: isLocal) }
+    #endif
     return commands
   }
 

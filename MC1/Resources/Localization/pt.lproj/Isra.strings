@@ -60,7 +60,7 @@
 "Isra.UI.Access.footer" = "O que cada contacto pode pedir à telemetria deste rádio quando a categoria está em «Contactos autorizados». Só mudam estas autorizações; o favorito e as outras opções do contacto ficam como estão.";
 "Isra.UI.Access.rowLabel" = "Pode pedir";
 "Isra.UI.Access.detailHeader" = "Telemetria deste rádio";
-"Isra.UI.Access.detailFooter" = "Conta quando a categoria está em «Contactos autorizados» em Definições › Telemetria. O favorito e as outras opções ficam como estão.";
+"Isra.UI.Access.detailFooter" = "Conta quando a categoria está em «Contactos autorizados» em Definições avançadas › Telemetria. O favorito e as outras opções ficam como estão.";
 
 // MARK: - A app nunca desliga o GPS do rádio (Isra.UI.Location)
 "Isra.UI.Location.gpsFooter" = "Só este interruptor liga ou desliga o GPS do rádio. A app nunca o desliga sozinha: escolher o GPS do telemóvel, desligar a atualização automática ou guardar uma posição no mapa deixam-no como está. Com o GPS ligado, uma posição guardada à mão é substituída pela próxima leitura do GPS.";
@@ -71,3 +71,17 @@
 "Isra.UI.Location.advertPos.on" = "Ligada";
 "Isra.UI.Location.advertPos.warning" = "Os adverts deste rádio levam a posição a toda a rede. Para desligar, no aparelho: Settings › All settings › Privacy › Advert pos.";
 "Isra.UI.Location.footer" = "A posição nos adverts só se muda no aparelho (Settings › All settings › Privacy › Advert pos). A app mostra o valor real do rádio e nunca o altera. «Atualizar localização automaticamente» só atua com a posição nos adverts ligada.";
+
+// MARK: - Proteções do rádio (Isra.UI.Reboot / Isra.UI.Pin / Isra.UI.OTA)
+"Isra.UI.Reboot.blocked" = "O Solo não deve ser reiniciado por software: desliga o interruptor 15 s.";
+"Isra.UI.OTA.blocked" = "A atualização por Bluetooth (OTA/DFU) está bloqueada nesta app: o firmware só se instala por USB.";
+"Isra.UI.Pin.random" = "Aleatório (no ecrã)";
+"Isra.UI.Pin.custom" = "Personalizado";
+"Isra.UI.Pin.randomFooter" = "O rádio mostra o PIN no ecrã ao emparelhar.";
+"Isra.UI.Pin.customFooter" = "PIN fixo de 6 dígitos.";
+"Isra.UI.Pin.knownDefault" = "123456 é o PIN de origem e toda a gente o conhece. Escolha outro ou «Aleatório (no ecrã)».";
+"Isra.UI.Pin.setMessage" = "Introduza um PIN de 6 dígitos. Aplica-se depois de desligar e voltar a ligar o rádio (interruptor desligado 15 s); a app não o reinicia.";
+"Isra.UI.Pin.toRandomTitle" = "Passar a PIN aleatório?";
+"Isra.UI.Pin.toRandomMessage" = "O rádio passa a mostrar o PIN no ecrã. Aplica-se depois de desligar e voltar a ligar o rádio (interruptor desligado 15 s); a app não o reinicia.";
+"Isra.UI.Pin.pending" = "PIN gravado no rádio. Aplica-se depois de desligar e voltar a ligar o rádio (interruptor desligado 15 s).";
+"Isra.UI.Pin.notConfirmed" = "O rádio indica um PIN diferente do enviado. Confirmar outra vez depois de o desligar e ligar.";

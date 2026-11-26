@@ -60,7 +60,7 @@
 "Isra.UI.Access.footer" = "What each contact may ask from this radio's telemetry when the category is set to «Authorized contacts». Only these permissions change; the favourite and the contact's other options stay as they are.";
 "Isra.UI.Access.rowLabel" = "May ask";
 "Isra.UI.Access.detailHeader" = "Telemetry of this radio";
-"Isra.UI.Access.detailFooter" = "Applies when the category is set to «Authorized contacts» in Settings › Telemetry. The favourite and the other options stay as they are.";
+"Isra.UI.Access.detailFooter" = "Applies when the category is set to «Authorized contacts» in Advanced Settings › Telemetry. The favourite and the other options stay as they are.";
 
 // MARK: - The app never switches the radio GPS off (Isra.UI.Location)
 "Isra.UI.Location.gpsFooter" = "Only this switch turns the radio's GPS on or off. The app never switches it off by itself: choosing the phone's GPS, turning auto-update off or saving a position on the map leave it as it is. A position saved by hand is replaced by the GPS's next fix while the GPS is on.";
@@ -71,3 +71,17 @@
 "Isra.UI.Location.advertPos.on" = "On";
 "Isra.UI.Location.advertPos.warning" = "This radio's adverts carry its position to the whole network. To turn it off, on the device: Settings › All settings › Privacy › Advert pos.";
 "Isra.UI.Location.footer" = "The position in adverts is changed on the device only (Settings › All settings › Privacy › Advert pos). The app shows the radio's real value and never changes it. «Update location automatically» only acts when the position in adverts is on.";
+
+// MARK: - Radio protections (Isra.UI.Reboot / Isra.UI.Pin / Isra.UI.OTA)
+"Isra.UI.Reboot.blocked" = "The Solo must not be rebooted by software: turn the switch off for 15 s.";
+"Isra.UI.OTA.blocked" = "Firmware updates over Bluetooth (OTA/DFU) are blocked in this app: firmware is installed by USB only.";
+"Isra.UI.Pin.random" = "Random (on screen)";
+"Isra.UI.Pin.custom" = "Custom";
+"Isra.UI.Pin.randomFooter" = "The radio shows the PIN on its screen when pairing.";
+"Isra.UI.Pin.customFooter" = "A fixed 6-digit PIN.";
+"Isra.UI.Pin.knownDefault" = "123456 is the factory PIN and everyone knows it. Choose another one or «Random (on screen)».";
+"Isra.UI.Pin.setMessage" = "Enter a 6-digit PIN. It applies after the radio is switched off and on (switch off for 15 s); the app does not reboot it.";
+"Isra.UI.Pin.toRandomTitle" = "Switch to a random PIN?";
+"Isra.UI.Pin.toRandomMessage" = "The radio will show the PIN on its screen. It applies after the radio is switched off and on (switch off for 15 s); the app does not reboot it.";
+"Isra.UI.Pin.pending" = "PIN saved on the radio. It applies after the radio is switched off and on (switch off for 15 s).";
+"Isra.UI.Pin.notConfirmed" = "The radio reports a different PIN than the one sent. Check again after switching it off and on.";

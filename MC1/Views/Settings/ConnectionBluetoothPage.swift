@@ -6,7 +6,11 @@ struct ConnectionBluetoothPage: View {
 
   var body: some View {
     List {
-      BluetoothSection()
+      #if ISRA // isra: PIN random (0) or custom, never 123456, no reboot
+        IsraBluetoothSection()
+      #else
+        BluetoothSection()
+      #endif
     }
     .themedCanvas(theme)
     .navigationTitle(L10n.Settings.Bluetooth.header)

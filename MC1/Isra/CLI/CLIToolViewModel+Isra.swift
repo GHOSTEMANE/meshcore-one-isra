@@ -15,6 +15,15 @@ extension CLIToolViewModel {
     }
   }
 
+  /// The error line for a refused CLI line (paired radio reboot, any OTA/DFU), or nil.
+  func israRefusal(for line: String) -> String? {
+    switch IsraCLIGuard.refusal(for: line, isLocal: activeSession?.isLocal ?? true) {
+    case .localReboot: IsraL10n.tr("Isra.UI.Reboot.blocked")
+    case .ota: IsraL10n.tr("Isra.UI.OTA.blocked")
+    case nil: nil
+    }
+  }
+
   func israOutput(_ text: String) {
     guard !Task.isCancelled else { return }
     appendOutput(text, type: .response)

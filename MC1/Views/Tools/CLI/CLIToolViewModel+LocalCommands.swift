@@ -14,7 +14,11 @@ extension CLIToolViewModel {
     case .ver: await runVer()
     case .board: await runBoard()
     case let .advert(flood): await runAdvert(flood: flood)
-    case .reboot: await runReboot()
+    #if ISRA // isra: the paired radio is never rebooted by software
+      case .reboot: israOutputError(IsraL10n.tr("Isra.UI.Reboot.blocked"))
+    #else
+      case .reboot: await runReboot()
+    #endif
     case .powerOff: await runPowerOff()
     case let .getKey(key): await runGet(key)
     case let .setName(name): await runSetName(name)

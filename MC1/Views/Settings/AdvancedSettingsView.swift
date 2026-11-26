@@ -59,7 +59,11 @@ struct AdvancedSettingsView: View {
       ConfigExportImportSection()
 
       // Device Actions
-      DeviceActionsSection()
+      #if ISRA // isra: no software reboot of the paired radio
+        IsraDeviceActionsSection()
+      #else
+        DeviceActionsSection()
+      #endif
 
       // Identity
       DeviceIdentitySection(

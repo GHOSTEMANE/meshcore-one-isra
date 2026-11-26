@@ -325,6 +325,14 @@ final class CLIToolViewModel {
     addToHistory(recorded)
     appendOutput("\(promptPrefix) \(recorded)", type: .command)
 
+    #if ISRA // isra: no software reboot of the paired radio, no OTA/DFU anywhere
+      if let refusal = israRefusal(for: trimmed) {
+        appendOutput(refusal, type: .error)
+        currentInput = ""
+        return
+      }
+    #endif
+
     // Parse and execute
     let parts = trimmed.split(separator: " ", maxSplits: 1).map(String.init)
     let cmd = parts[0].lowercased()
