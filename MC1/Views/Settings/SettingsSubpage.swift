@@ -130,7 +130,11 @@ private struct SettingsSubpageDestination: View {
     case .blockedContacts:
       BlockedContactsView()
     case .trustedContacts:
-      TrustedContactsPickerView()
+      #if ISRA // isra: per-contact access (bits 0x0E), other flag bits kept
+        IsraTelemetryAccessListView()
+      #else
+        TrustedContactsPickerView()
+      #endif
     case .remoteCLIContacts:
       RemoteCLIContactsPickerView()
     case .translateIntoLanguage:

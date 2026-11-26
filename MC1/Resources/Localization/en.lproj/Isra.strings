@@ -39,3 +39,25 @@
 "Isra.Core.phonePos.error.device" = "The radio answered error %ld.";
 "Isra.Core.phonePos.error.noFix" = "No position from iOS (permission or no fix).";
 "Isra.Core.phonePos.error.notSent" = "Not sent: no answer from the radio.";
+// MARK: - Telemetry per category (Isra.UI.Telemetry / Isra.UI.Access)
+"Isra.UI.Telemetry.base" = "Battery and status";
+"Isra.UI.Telemetry.location" = "Location";
+"Isra.UI.Telemetry.environment" = "Sensors";
+"Isra.UI.Telemetry.mode.nobody" = "Nobody";
+"Isra.UI.Telemetry.mode.authorized" = "Authorized contacts";
+"Isra.UI.Telemetry.mode.everyone" = "Everyone";
+"Isra.UI.Telemetry.mode.other" = "Other (%d)";
+"Isra.UI.Telemetry.authorizedContacts" = "Authorized contacts";
+"Isra.UI.Telemetry.footer" = "Each category writes only its own value to the radio. «Authorized contacts» answers only contacts holding that category's permission (see the list). Location is only sent when the radio has a recent position.";
+"Isra.UI.Access.title" = "Authorized contacts";
+"Isra.UI.Access.nothing" = "Nothing";
+"Isra.UI.Access.status" = "Status";
+"Isra.UI.Access.statusLocation" = "Status + location";
+"Isra.UI.Access.statusSensors" = "Status + sensors";
+"Isra.UI.Access.all" = "Everything";
+"Isra.UI.Access.other" = "Other (0x%02X)";
+"Isra.UI.Access.authorizedOnly" = "Authorized only";
+"Isra.UI.Access.footer" = "What each contact may ask from this radio's telemetry when the category is set to «Authorized contacts». Only these permissions change; the favourite and the contact's other options stay as they are.";
+"Isra.UI.Access.rowLabel" = "May ask";
+"Isra.UI.Access.detailHeader" = "Telemetry of this radio";
+"Isra.UI.Access.detailFooter" = "Applies when the category is set to «Authorized contacts» in Settings › Telemetry. The favourite and the other options stay as they are.";

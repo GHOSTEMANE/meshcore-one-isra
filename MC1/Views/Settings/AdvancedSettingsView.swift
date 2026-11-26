@@ -31,7 +31,11 @@ struct AdvancedSettingsView: View {
       StaleNodeCleanupSection()
 
       // Telemetry Settings
-      TelemetrySettingsSection()
+      #if ISRA // isra: one picker per category, each writes only its own mode
+        IsraTelemetrySection()
+      #else
+        TelemetrySettingsSection()
+      #endif
 
       RemoteCLISettingsSection()
 

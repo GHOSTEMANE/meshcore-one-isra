@@ -58,6 +58,13 @@ struct ContactDetailContent: View {
         )
         .themedRowBackground(theme)
 
+        #if ISRA // isra: what this contact may ask from our telemetry
+          if state.currentContact.type == .chat {
+            IsraContactTelemetryAccessSection(contact: state.currentContact)
+              .themedRowBackground(theme)
+          }
+        #endif
+
         ContactDetailInfoSection(
           state: state, rendererID: rendererID, rendererRevision: rendererRevision,
           onRowPosition: recordRowPosition

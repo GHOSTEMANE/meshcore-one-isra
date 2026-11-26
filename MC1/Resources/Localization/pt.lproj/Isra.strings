@@ -39,3 +39,25 @@
 "Isra.Core.phonePos.error.device" = "O rádio respondeu com o erro %ld.";
 "Isra.Core.phonePos.error.noFix" = "Sem posição do iOS (autorização ou sem fix).";
 "Isra.Core.phonePos.error.notSent" = "Não enviada: o rádio não respondeu.";
+// MARK: - Telemetria por categoria (Isra.UI.Telemetry / Isra.UI.Access)
+"Isra.UI.Telemetry.base" = "Bateria e estado";
+"Isra.UI.Telemetry.location" = "Localização";
+"Isra.UI.Telemetry.environment" = "Sensores";
+"Isra.UI.Telemetry.mode.nobody" = "Ninguém";
+"Isra.UI.Telemetry.mode.authorized" = "Contactos autorizados";
+"Isra.UI.Telemetry.mode.everyone" = "Todos";
+"Isra.UI.Telemetry.mode.other" = "Outro (%d)";
+"Isra.UI.Telemetry.authorizedContacts" = "Contactos autorizados";
+"Isra.UI.Telemetry.footer" = "Cada categoria grava só o seu valor no rádio. «Contactos autorizados» responde apenas aos contactos com a autorização dessa categoria (ver a lista). A localização só segue quando o rádio tem uma posição recente.";
+"Isra.UI.Access.title" = "Contactos autorizados";
+"Isra.UI.Access.nothing" = "Nada";
+"Isra.UI.Access.status" = "Estado";
+"Isra.UI.Access.statusLocation" = "Estado + localização";
+"Isra.UI.Access.statusSensors" = "Estado + sensores";
+"Isra.UI.Access.all" = "Tudo";
+"Isra.UI.Access.other" = "Outro (0x%02X)";
+"Isra.UI.Access.authorizedOnly" = "Só com autorização";
+"Isra.UI.Access.footer" = "O que cada contacto pode pedir à telemetria deste rádio quando a categoria está em «Contactos autorizados». Só mudam estas autorizações; o favorito e as outras opções do contacto ficam como estão.";
+"Isra.UI.Access.rowLabel" = "Pode pedir";
+"Isra.UI.Access.detailHeader" = "Telemetria deste rádio";
+"Isra.UI.Access.detailFooter" = "Conta quando a categoria está em «Contactos autorizados» em Definições › Telemetria. O favorito e as outras opções ficam como estão.";
