@@ -9,6 +9,9 @@ struct LocationSettingsView: View {
   var body: some View {
     List {
       LocationSettingsSection(showingLocationPicker: $showingLocationPicker)
+      #if ISRA
+        IsraPhonePosSection() // isra: phone position for telemetry (MC1/Isra)
+      #endif
     }
     .themedCanvas(theme)
     .navigationTitle(L10n.Settings.Location.header)

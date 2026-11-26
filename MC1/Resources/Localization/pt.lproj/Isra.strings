@@ -6,3 +6,36 @@
 "Isra.Core.firmware.unsupported" = "não (firmware oficial)";
 "Isra.Core.firmware.noReply" = "sem resposta";
 "Isra.Core.firmware.unknown" = "—";
+
+/* Core: posição do telemóvel para a telemetria */
+"Isra.Core.phonePos.header" = "Posição do telemóvel para a telemetria";
+"Isra.Core.phonePos.toggle" = "Enviar a posição do telemóvel ao rádio";
+"Isra.Core.phonePos.footer" = "Enquanto o GPS do rádio está a dormir (GPS pwr), o rádio pede a posição deste iPhone e usa-a só para responder à telemetria dos contactos de confiança. Fica só na RAM do rádio: nunca vai para os adverts nem para a flash. Precisa da localização em «Sempre». Com a opção desligada no rádio ou com outro firmware, não é enviado nada.";
+"Isra.Core.phonePos.permission" = "Acesso à localização";
+"Isra.Core.phonePos.permission.always" = "Sempre";
+"Isra.Core.phonePos.permission.whenInUse" = "Durante a utilização (precisa de «Sempre»)";
+"Isra.Core.phonePos.permission.denied" = "Recusado";
+"Isra.Core.phonePos.permission.notDetermined" = "Ainda não pedido";
+"Isra.Core.phonePos.permission.request" = "Permitir a localização sempre";
+"Isra.Core.phonePos.permission.openSettings" = "Abrir as Definições do iOS";
+"Isra.Core.phonePos.firmware" = "Firmware do rádio";
+"Isra.Core.phonePos.firmware.yes" = "suportado";
+"Isra.Core.phonePos.firmware.noFeature" = "isra, sem esta função";
+"Isra.Core.phonePos.firmware.stock" = "sem suporte (firmware oficial)";
+"Isra.Core.phonePos.firmware.unknown" = "desconhecido (sem ligação?)";
+"Isra.Core.phonePos.deviceSetting" = "«Phone pos» no rádio";
+"Isra.Core.phonePos.gps" = "GPS do rádio";
+"Isra.Core.phonePos.gps.off" = "desligado";
+"Isra.Core.phonePos.gps.dutyCycle" = "ligado, com GPS pwr";
+"Isra.Core.phonePos.gps.alwaysOn" = "sempre ligado (GPS pwr desligado)";
+"Isra.Core.phonePos.deviceHint" = "Ligue no rádio: Settings › All settings › Privacy › Phone pos, e na página Settings do ecrã inicial › GPS (com GPS pwr). A posição do telemóvel só substitui o GPS enquanto ele dorme.";
+"Isra.Core.phonePos.refresh" = "Ler outra vez o estado do rádio";
+"Isra.Core.phonePos.lastSent" = "Última posição enviada";
+"Isra.Core.phonePos.never" = "nunca";
+"Isra.Core.phonePos.on" = "ligado";
+"Isra.Core.phonePos.off" = "desligado";
+"Isra.Core.phonePos.error.deviceSetting" = "O rádio recusou: ligue «Phone pos», o GPS e o GPS pwr no rádio.";
+"Isra.Core.phonePos.error.rejected" = "Posição recusada (precisão/idade).";
+"Isra.Core.phonePos.error.device" = "O rádio respondeu com o erro %ld.";
+"Isra.Core.phonePos.error.noFix" = "Sem posição do iOS (autorização ou sem fix).";
+"Isra.Core.phonePos.error.notSent" = "Não enviada: o rádio não respondeu.";

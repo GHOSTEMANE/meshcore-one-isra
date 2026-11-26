@@ -18,6 +18,9 @@ final class IsraCenter {
   /// Public key of the connected device, nil while disconnected.
   private(set) var devicePublicKey: Data?
 
+  /// Phone position for telemetry (section 2).
+  let phonePos = IsraPhonePosService()
+
   @ObservationIgnored private(set) var session: MeshCoreSession?
   @ObservationIgnored private var eventsTask: Task<Void, Never>?
   @ObservationIgnored private var eventsSubscription: UUID?
@@ -58,10 +61,13 @@ final class IsraCenter {
     hello = await session.israHello
     guard self.session === session else { return }
     await startListening(to: session)
+    guard self.session === session else { return }
+    updatePhonePosBinding(sendNow: true)
   }
 
   /// Called on connection loss and explicit disconnect.
   func connectionLost() {
+    phonePos.unbind()
     stopListening()
     session = nil
     devicePublicKey = nil
@@ -75,9 +81,32 @@ final class IsraCenter {
       let state = try await session.israResendHello()
       guard self.session === session else { return }
       hello = state
+      updatePhonePosBinding(sendNow: false)
     } catch {
       // Cancellation or a dropped link: the next connection sends HELLO anyway.
     }
+  }
+
+  // MARK: - Phone position
+
+  /// Turns the feature on or off for a device, and tells a connected radio at once.
+  func setPhonePositionEnabled(_ enabled: Bool, devicePublicKey key: Data) async {
+    IsraSettings.setPhonePositionEnabled(enabled, devicePublicKey: key)
+    guard devicePublicKey == key, session != nil else { return }
+    await resendHello()
+    if enabled { phonePos.handlePositionRequest() }
+  }
+
+  /// Answers position requests only while the link has the PHONE_POS cap.
+  private func updatePhonePosBinding(sendNow: Bool) {
+    guard let session, activeCaps.contains(.phonePosition) else {
+      phonePos.unbind()
+      return
+    }
+    if phonePos.isBound, !sendNow { return }
+    phonePos.bind(sender: { frame in
+      try await session.israSendPhonePosition(frame)
+    }, sendNow: sendNow)
   }
 
   // MARK: - 0xE1 frames
@@ -119,8 +148,9 @@ final class IsraCenter {
       // A HELLO the session sent after a mid-session APP_START (settings changes).
       let hostCaps = devicePublicKey.map { IsraSettings.hostCaps(devicePublicKey: $0) } ?? []
       hello = .supported(reply, hostCaps: hostCaps)
+      updatePhonePosBinding(sendNow: false)
     case .positionRequest:
-      break
+      phonePos.handlePositionRequest()
     case .sentContactMessage, .sentChannelMessage, .sentMessageStatus, .unknown:
       break
     }

@@ -6,3 +6,36 @@
 "Isra.Core.firmware.unsupported" = "no (stock firmware)";
 "Isra.Core.firmware.noReply" = "no reply";
 "Isra.Core.firmware.unknown" = "—";
+
+/* Core: phone position for telemetry */
+"Isra.Core.phonePos.header" = "Phone position for telemetry";
+"Isra.Core.phonePos.toggle" = "Send phone position to the radio";
+"Isra.Core.phonePos.footer" = "While the radio's GPS sleeps (GPS pwr), the radio asks for this iPhone's position and uses it only to answer telemetry requests from trusted contacts. It stays in the radio's RAM: never in adverts, never in flash. Needs Location access set to \"Always\". Off on the radio or with another firmware, nothing is sent.";
+"Isra.Core.phonePos.permission" = "Location access";
+"Isra.Core.phonePos.permission.always" = "Always";
+"Isra.Core.phonePos.permission.whenInUse" = "While using (needs Always)";
+"Isra.Core.phonePos.permission.denied" = "Denied";
+"Isra.Core.phonePos.permission.notDetermined" = "Not asked yet";
+"Isra.Core.phonePos.permission.request" = "Allow location always";
+"Isra.Core.phonePos.permission.openSettings" = "Open iOS Settings";
+"Isra.Core.phonePos.firmware" = "Radio firmware";
+"Isra.Core.phonePos.firmware.yes" = "supported";
+"Isra.Core.phonePos.firmware.noFeature" = "isra, without this feature";
+"Isra.Core.phonePos.firmware.stock" = "not supported (stock firmware)";
+"Isra.Core.phonePos.firmware.unknown" = "unknown (not connected?)";
+"Isra.Core.phonePos.deviceSetting" = "\"Phone pos\" on the radio";
+"Isra.Core.phonePos.gps" = "Radio GPS";
+"Isra.Core.phonePos.gps.off" = "off";
+"Isra.Core.phonePos.gps.dutyCycle" = "on, with GPS pwr";
+"Isra.Core.phonePos.gps.alwaysOn" = "always on (GPS pwr off)";
+"Isra.Core.phonePos.deviceHint" = "Turn them on on the radio: Settings › All settings › Privacy › Phone pos, and on the home Settings page › GPS (with GPS pwr). The phone position only stands in for a sleeping GPS.";
+"Isra.Core.phonePos.refresh" = "Read the radio state again";
+"Isra.Core.phonePos.lastSent" = "Last position sent";
+"Isra.Core.phonePos.never" = "never";
+"Isra.Core.phonePos.on" = "on";
+"Isra.Core.phonePos.off" = "off";
+"Isra.Core.phonePos.error.deviceSetting" = "The radio refused it: turn on \"Phone pos\", GPS and GPS pwr on the radio.";
+"Isra.Core.phonePos.error.rejected" = "Position refused (accuracy/age).";
+"Isra.Core.phonePos.error.device" = "The radio answered error %ld.";
+"Isra.Core.phonePos.error.noFix" = "No position from iOS (permission or no fix).";
+"Isra.Core.phonePos.error.notSent" = "Not sent: no answer from the radio.";
