@@ -98,6 +98,14 @@ final class NodeCLIViewModel {
     addToHistory(transmitted)
     appendOutput("\(promptPrefix) \(transmitted)", type: .command)
 
+    #if ISRA // isra: no OTA/DFU on a remote node either (IsraCLIGuard)
+      if IsraCLIGuard.refusal(for: normalized, isLocal: false) == .ota {
+        appendOutput(IsraL10n.tr("Isra.UI.OTA.blocked"), type: .error)
+        currentInput = ""
+        return
+      }
+    #endif
+
     let parts = normalized.split(separator: " ", maxSplits: 1).map(String.init)
     let cmd = parts[0].lowercased()
     let args = parts.count > 1 ? parts[1] : ""
