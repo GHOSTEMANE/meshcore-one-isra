@@ -10,6 +10,13 @@ import MC1Services
 /// values. No caller here ever passes an advert location policy: that one is
 /// changed on the device only.
 enum IsraRadioWrites {
+  /// Upstream refreshes the location before every advert sent from the app (BLE menu,
+  /// CLI `advert`, Siri): with the phone as source it writes the iPhone position with
+  /// CMD 14, which the firmware saves to flash and puts in SELF_INFO and in every
+  /// advert; with the device as source it silently switches the radio GPS on. In the
+  /// isra build an advert goes out with what the radio already has.
+  static let advertRefreshesLocation = false
+
   static func otherParams(
     _ settingsService: SettingsService,
     autoAddContacts: Bool? = nil,

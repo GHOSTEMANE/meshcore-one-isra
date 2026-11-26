@@ -242,6 +242,9 @@ extension AppState {
   /// policy or the user's per-device preference disables auto-update. Pure over
   /// its inputs so the privacy gate is testable with an injected store.
   func advertGPSSource(device: DeviceDTO?, store: DevicePreferenceStore) -> GPSSource? {
+    #if ISRA // isra: an advert never writes the phone position (CMD 14) nor switches the radio GPS on
+      guard IsraRadioWrites.advertRefreshesLocation else { return nil }
+    #endif
     guard let device,
           device.sharesLocationPublicly,
           store.isAutoUpdateLocationEnabled(deviceID: device.id) else {

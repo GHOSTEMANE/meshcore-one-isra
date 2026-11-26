@@ -63,14 +63,14 @@
 "Isra.UI.Access.detailFooter" = "Conta quando a categoria está em «Contactos autorizados» em Definições avançadas › Telemetria. O favorito e as outras opções ficam como estão.";
 
 // MARK: - A app nunca desliga o GPS do rádio (Isra.UI.Location)
-"Isra.UI.Location.gpsFooter" = "Só este interruptor liga ou desliga o GPS do rádio. A app nunca o desliga sozinha: escolher o GPS do telemóvel, desligar a atualização automática ou guardar uma posição no mapa deixam-no como está. Com o GPS ligado, uma posição guardada à mão é substituída pela próxima leitura do GPS.";
+"Isra.UI.Location.gpsFooter" = "Só este interruptor liga ou desliga o GPS do rádio. A app nunca mexe nele sozinha: enviar um advert ou guardar uma posição no mapa deixam-no como está. Com o GPS ligado, uma posição guardada à mão é substituída pela próxima leitura do GPS.";
 
 // MARK: - Posição nos adverts, só leitura (Isra.UI.Location)
 "Isra.UI.Location.advertPos" = "Posição nos adverts";
 "Isra.UI.Location.advertPos.off" = "Desligada";
 "Isra.UI.Location.advertPos.on" = "Ligada";
 "Isra.UI.Location.advertPos.warning" = "Os adverts deste rádio levam a posição a toda a rede. Para desligar, no aparelho: Settings › All settings › Privacy › Advert pos.";
-"Isra.UI.Location.footer" = "A posição nos adverts só se muda no aparelho (Settings › All settings › Privacy › Advert pos). A app mostra o valor real do rádio e nunca o altera. «Atualizar localização automaticamente» só atua com a posição nos adverts ligada.";
+"Isra.UI.Location.footer" = "A posição nos adverts só se muda no aparelho (Settings › All settings › Privacy › Advert pos). A app mostra o valor lido do rádio da última vez e nunca o altera. Enviar um advert pela app nunca grava a posição do telemóvel no rádio nem liga o GPS dele: o advert leva o que o rádio já tem.";
 
 // MARK: - Proteções do rádio (Isra.UI.Reboot / Isra.UI.Pin / Isra.UI.OTA)
 "Isra.UI.Reboot.blocked" = "O Solo não deve ser reiniciado por software: desliga o interruptor 15 s.";

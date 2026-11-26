@@ -63,14 +63,14 @@
 "Isra.UI.Access.detailFooter" = "Applies when the category is set to «Authorized contacts» in Advanced Settings › Telemetry. The favourite and the other options stay as they are.";
 
 // MARK: - The app never switches the radio GPS off (Isra.UI.Location)
-"Isra.UI.Location.gpsFooter" = "Only this switch turns the radio's GPS on or off. The app never switches it off by itself: choosing the phone's GPS, turning auto-update off or saving a position on the map leave it as it is. A position saved by hand is replaced by the GPS's next fix while the GPS is on.";
+"Isra.UI.Location.gpsFooter" = "Only this switch turns the radio's GPS on or off. The app never switches it by itself: sending an advert or saving a position on the map leave it as it is. A position saved by hand is replaced by the GPS's next fix while the GPS is on.";
 
 // MARK: - Advert location policy, read-only (Isra.UI.Location)
 "Isra.UI.Location.advertPos" = "Position in adverts";
 "Isra.UI.Location.advertPos.off" = "Off";
 "Isra.UI.Location.advertPos.on" = "On";
 "Isra.UI.Location.advertPos.warning" = "This radio's adverts carry its position to the whole network. To turn it off, on the device: Settings › All settings › Privacy › Advert pos.";
-"Isra.UI.Location.footer" = "The position in adverts is changed on the device only (Settings › All settings › Privacy › Advert pos). The app shows the radio's real value and never changes it. «Update location automatically» only acts when the position in adverts is on.";
+"Isra.UI.Location.footer" = "The position in adverts is changed on the device only (Settings › All settings › Privacy › Advert pos). The app shows the radio's value as last read and never changes it. Sending an advert from the app never writes the phone's position to the radio nor turns its GPS on: the advert carries what the radio already has.";
 
 // MARK: - Radio protections (Isra.UI.Reboot / Isra.UI.Pin / Isra.UI.OTA)
 "Isra.UI.Reboot.blocked" = "The Solo must not be rebooted by software: turn the switch off for 15 s.";

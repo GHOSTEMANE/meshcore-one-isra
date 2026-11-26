@@ -8,29 +8,22 @@ private let logger = Logger(subsystem: "com.mc1", category: "IsraLocationSetting
 /// - The advert location policy is shown read-only, as the radio reports it. The
 ///   "share location publicly" toggle is gone and nothing here writes the policy:
 ///   it is changed on the device only (Settings › All settings › Privacy › Advert pos).
-/// - The app never switches the radio's GPS off: choosing the phone as source and
-///   turning auto-update off leave the GPS as it is. Only the device GPS toggle
-///   (an explicit choice) switches it.
+/// - No "update location automatically" / "GPS source" rows: they only fed the
+///   refresh before an advert, which the isra build never does (an advert never
+///   writes the phone position nor switches the radio GPS on; see
+///   `IsraRadioWrites.advertRefreshesLocation`).
+/// - The app never switches the radio's GPS: only the device GPS toggle (an
+///   explicit choice) turns it on or off.
 struct IsraLocationSettingsSection: View {
   @Environment(\.appState) private var appState
   @Environment(\.appTheme) private var theme
   @Environment(\.dismiss) private var dismiss
-  @Environment(\.openURL) private var openURL
   @Binding var showingLocationPicker: Bool
-  @State private var autoUpdateLocation = false
-  @State private var gpsSource: GPSSource = .phone
   @State private var deviceHasGPS = false
   @State private var deviceGPSEnabled = false
   @State private var errorMessage: String?
-  @State private var showLocationDeniedAlert = false
   @State private var retryAlert = RetryAlertState()
   @State private var isSaving = false
-
-  private let devicePreferenceStore = DevicePreferenceStore()
-
-  private var shouldPollDeviceGPS: Bool {
-    autoUpdateLocation && gpsSource == .device && deviceGPSEnabled
-  }
 
   /// The radio's advert location policy byte, as last read from SELF_INFO.
   private var advertPolicy: UInt8 {
@@ -60,7 +53,7 @@ struct IsraLocationSettingsSection: View {
           }
         }
         .foregroundStyle(.primary)
-        .radioDisabled(for: appState.connectionState, or: isSaving || autoUpdateLocation)
+        .radioDisabled(for: appState.connectionState, or: isSaving)
 
         LabeledContent {
           Text(IsraL10n.tr(advertPolicy == 0 ? "Isra.UI.Location.advertPos.off" : "Isra.UI.Location.advertPos.on"))
@@ -73,32 +66,6 @@ struct IsraLocationSettingsSection: View {
           Label(IsraL10n.tr("Isra.UI.Location.advertPos.warning"), systemImage: "exclamationmark.triangle.fill")
             .font(.callout)
             .foregroundStyle(.orange)
-        }
-
-        Toggle(isOn: $autoUpdateLocation) {
-          TintedLabel(L10n.Settings.Location.autoUpdate, systemImage: "location.circle")
-        }
-        .onChange(of: autoUpdateLocation) { _, newValue in
-          handleAutoUpdateChange(newValue)
-        }
-        .radioDisabled(for: appState.connectionState, or: isSaving)
-
-        if autoUpdateLocation {
-          if deviceHasGPS {
-            Picker(L10n.Settings.Location.gpsSource, selection: $gpsSource) {
-              Text(L10n.Settings.Location.GpsSource.phone).tag(GPSSource.phone)
-              Text(L10n.Settings.Location.GpsSource.device).tag(GPSSource.device)
-            }
-            .onChange(of: gpsSource) { oldValue, newValue in
-              handleGPSSourceChange(from: oldValue, to: newValue)
-            }
-            .radioDisabled(for: appState.connectionState, or: isSaving)
-          } else {
-            LabeledContent(L10n.Settings.Location.gpsSource) {
-              Text(L10n.Settings.Location.GpsSource.phone)
-                .foregroundStyle(.secondary)
-            }
-          }
         }
       } header: {
         Text(L10n.Settings.Location.header)
@@ -122,35 +89,14 @@ struct IsraLocationSettingsSection: View {
       }
     }
     .task(id: startupTaskID) {
-      loadPreferences()
       guard appState.canRunSettingsStartupReads else {
         logger.debug("Deferring location settings startup reads until sync is less contended")
         return
       }
       await loadDeviceGPSState()
     }
-    .task(id: shouldPollDeviceGPS) {
-      guard shouldPollDeviceGPS,
-            let settingsService = appState.services?.settingsService else { return }
-      while !Task.isCancelled {
-        try? await Task.sleep(for: .seconds(3))
-        guard let device = appState.connectedDevice,
-              device.latitude == 0, device.longitude == 0 else { break }
-        try? await settingsService.refreshDeviceInfo()
-      }
-    }
     .errorAlert($errorMessage)
     .retryAlert(retryAlert)
-    .alert(L10n.Onboarding.Permissions.LocationAlert.title, isPresented: $showLocationDeniedAlert) {
-      Button(L10n.Onboarding.Permissions.LocationAlert.openSettings) {
-        if let url = URL(string: UIApplication.openSettingsURLString) {
-          openURL(url)
-        }
-      }
-      Button(L10n.Localizable.Common.cancel, role: .cancel) {}
-    } message: {
-      Text(L10n.Onboarding.Permissions.LocationAlert.message)
-    }
   }
 
   private var startupTaskID: String {
@@ -166,25 +112,12 @@ struct IsraLocationSettingsSection: View {
     )
   }
 
-  private func loadPreferences() {
-    if let device = appState.connectedDevice {
-      autoUpdateLocation = devicePreferenceStore.isAutoUpdateLocationEnabled(deviceID: device.id)
-      gpsSource = devicePreferenceStore.gpsSource(deviceID: device.id)
-    }
-  }
-
   private func loadDeviceGPSState() async {
     guard appState.canRunSettingsStartupReads, let settingsService = appState.services?.settingsService else { return }
     do {
       let state = try await settingsService.getDeviceGPSState()
       deviceHasGPS = state.isSupported
       deviceGPSEnabled = state.isEnabled
-      if let deviceID = appState.connectedDevice?.id,
-         state.isEnabled,
-         !devicePreferenceStore.hasSetGPSSource(deviceID: deviceID) {
-        gpsSource = .device
-        devicePreferenceStore.setGPSSource(.device, deviceID: deviceID)
-      }
       if state.isEnabled {
         try? await settingsService.refreshDeviceInfo()
       }
@@ -194,69 +127,12 @@ struct IsraLocationSettingsSection: View {
     }
   }
 
-  /// isra: turning auto-update off no longer switches the radio's GPS off.
-  private func handleAutoUpdateChange(_ newValue: Bool) {
-    guard let deviceID = appState.connectedDevice?.id else { return }
-    if newValue, gpsSource == .phone, appState.locationService.isLocationDenied {
-      autoUpdateLocation = false
-      showLocationDeniedAlert = true
-      return
-    }
-    devicePreferenceStore.setAutoUpdateLocationEnabled(newValue, deviceID: deviceID)
-    if newValue, gpsSource == .phone {
-      appState.locationService.requestPermissionIfNeeded()
-    }
-    if gpsSource == .device, newValue, !deviceGPSEnabled {
-      saveDeviceGPS(
-        true,
-        onFailure: {
-          autoUpdateLocation = false
-          devicePreferenceStore.setAutoUpdateLocationEnabled(false, deviceID: deviceID)
-        }
-      )
-    }
-  }
-
-  /// isra: choosing the phone as source no longer switches the radio's GPS off.
-  private func handleGPSSourceChange(from oldValue: GPSSource, to newValue: GPSSource) {
-    guard let deviceID = appState.connectedDevice?.id else { return }
-    if newValue == .phone, appState.locationService.isLocationDenied {
-      gpsSource = oldValue
-      showLocationDeniedAlert = true
-      return
-    }
-
-    devicePreferenceStore.setGPSSource(newValue, deviceID: deviceID)
-    if newValue == .phone {
-      appState.locationService.requestPermissionIfNeeded()
-    } else if autoUpdateLocation, !deviceGPSEnabled {
-      saveDeviceGPS(
-        true,
-        onFailure: {
-          gpsSource = oldValue
-          devicePreferenceStore.setGPSSource(oldValue, deviceID: deviceID)
-        }
-      )
-    }
-  }
-
   /// The explicit device GPS toggle. isra: no advert policy write after it.
   private func updateDeviceGPSToggle(_ enabled: Bool) {
-    guard let deviceID = appState.connectedDevice?.id else { return }
-    let shouldDisableAutoUpdate = !enabled && autoUpdateLocation && gpsSource == .device
-    saveDeviceGPS(enabled) {
-      if shouldDisableAutoUpdate {
-        autoUpdateLocation = false
-        devicePreferenceStore.setAutoUpdateLocationEnabled(false, deviceID: deviceID)
-      }
-    }
+    saveDeviceGPS(enabled)
   }
 
-  private func saveDeviceGPS(
-    _ enabled: Bool,
-    onSuccess: (@MainActor () async throws -> Void)? = nil,
-    onFailure: (@MainActor () -> Void)? = nil
-  ) {
+  private func saveDeviceGPS(_ enabled: Bool) {
     guard let settingsService = appState.services?.settingsService else { return }
 
     let previousEnabled = deviceGPSEnabled
@@ -267,21 +143,16 @@ struct IsraLocationSettingsSection: View {
         let state = try await settingsService.setDeviceGPSEnabledVerified(enabled)
         deviceHasGPS = state.isSupported
         deviceGPSEnabled = state.isEnabled
-        if let onSuccess {
-          try await onSuccess()
-        }
         retryAlert.reset()
       } catch let error as SettingsServiceError where error.isRetryable {
         deviceGPSEnabled = previousEnabled
-        onFailure?()
         retryAlert.show(
           message: error.userFacingMessage,
-          onRetry: { saveDeviceGPS(enabled, onSuccess: onSuccess, onFailure: onFailure) },
+          onRetry: { saveDeviceGPS(enabled) },
           onMaxRetriesExceeded: { dismiss() }
         )
       } catch {
         deviceGPSEnabled = previousEnabled
-        onFailure?()
         errorMessage = error.userFacingMessage
       }
       isSaving = false
