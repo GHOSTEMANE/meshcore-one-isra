@@ -225,6 +225,15 @@
 "Isra.Tools.Import.Value.policyNone" = "no position";
 "Isra.Tools.Import.Value.policyShare" = "share position";
 
+/* MARK: - Tools: effective scope in the channel composer */
+"Isra.Tools.Scope.appRegion" = "Scope: %@ (set by the app for each message)";
+"Isra.Tools.Scope.appUnscoped" = "Scope: none (forced by the app)";
+"Isra.Tools.Scope.radio" = "Scope: decided by the radio";
+"Isra.Tools.Scope.radioDefault" = "Scope: decided by the radio (default %@)";
+"Isra.Tools.Scope.appRegionHelp" = "This channel has a region in the app. The app sets it on every send and it overrides any scope chosen on the radio, including the Solo's per-channel scope.";
+"Isra.Tools.Scope.appUnscopedHelp" = "This channel is set to all regions in the app. The app asks the radio to flood without a scope, overriding the radio's default and the Solo's per-channel scope.";
+"Isra.Tools.Scope.radioHelp" = "The app leaves the scope to the radio. Official firmware uses its default scope (none if it has none). The Solo uses the scope chosen for this channel on the device, else its default; the app cannot read that choice.";
+
 /* MARK: - Tools: DM retries */
 "Isra.Tools.DM.worstCase" = "Worst case per message";
 "Isra.Tools.DM.worstCaseValue" = "%ld sends (%ld direct + %ld flood)";

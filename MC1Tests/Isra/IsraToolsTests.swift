@@ -255,6 +255,28 @@ struct IsraConfigImportGuardTests {
   }
 }
 
+@Suite("isra effective scope")
+struct IsraEffectiveScopeTests {
+  @Test
+  func `an app region overrides the radio`() {
+    let scope = IsraEffectiveScope.resolve(
+      channelScope: .region("pt-setubal"), supportsUnscopedFloodSend: true, defaultScopeName: "pt"
+    )
+    #expect(scope == .appRegion("pt-setubal"))
+  }
+
+  @Test
+  func `all regions is forced unscoped only where the radio supports it`() {
+    #expect(IsraEffectiveScope.resolve(channelScope: .allRegions, supportsUnscopedFloodSend: true, defaultScopeName: nil) == .appUnscoped)
+    #expect(IsraEffectiveScope.resolve(channelScope: .allRegions, supportsUnscopedFloodSend: false, defaultScopeName: "pt") == .radio(defaultName: "pt"))
+  }
+
+  @Test
+  func `inherit leaves it to the radio`() {
+    #expect(IsraEffectiveScope.resolve(channelScope: .inherit, supportsUnscopedFloodSend: true, defaultScopeName: "") == .radio(defaultName: nil))
+  }
+}
+
 @Suite("isra DM budget")
 struct IsraDMBudgetTests {
   @Test

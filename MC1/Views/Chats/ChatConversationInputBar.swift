@@ -38,6 +38,9 @@ struct ChatConversationInputBar: View {
         leading: { ChatShareMenu(onInsert: insertShared) },
         onSend: send
       )
+      #if ISRA
+      .israEffectiveScope(channel) // isra: scope this message will really use
+      #endif
     }
   }
 

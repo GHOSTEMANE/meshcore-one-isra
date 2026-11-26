@@ -225,6 +225,15 @@
 "Isra.Tools.Import.Value.policyNone" = "sem posição";
 "Isra.Tools.Import.Value.policyShare" = "partilhar posição";
 
+/* MARK: - Tools: âmbito efetivo ao escrever num canal */
+"Isra.Tools.Scope.appRegion" = "Âmbito: %@ (posto pela app em cada mensagem)";
+"Isra.Tools.Scope.appUnscoped" = "Âmbito: nenhum (forçado pela app)";
+"Isra.Tools.Scope.radio" = "Âmbito: decide o rádio";
+"Isra.Tools.Scope.radioDefault" = "Âmbito: decide o rádio (predefinido %@)";
+"Isra.Tools.Scope.appRegionHelp" = "Este canal tem uma região na app. A app põe-na em cada envio e sobrepõe-se a qualquer âmbito escolhido no rádio, incluindo o âmbito por canal do Solo.";
+"Isra.Tools.Scope.appUnscopedHelp" = "Este canal está em todas as regiões na app. A app pede ao rádio para inundar sem âmbito, por cima do predefinido do rádio e do âmbito por canal do Solo.";
+"Isra.Tools.Scope.radioHelp" = "A app deixa o âmbito ao rádio. O firmware oficial usa o âmbito predefinido (nenhum, se não tiver). O Solo usa o âmbito escolhido para este canal no aparelho e, se não houver, o predefinido; a app não consegue ler essa escolha.";
+
 /* MARK: - Tools: reenvios de mensagens diretas */
 "Isra.Tools.DM.worstCase" = "Pior caso por mensagem";
 "Isra.Tools.DM.worstCaseValue" = "%ld envios (%ld diretos + %ld por inundação)";
