@@ -1,0 +1,65 @@
+name: isra - nova versão da MeshCore One?
+
+# Todos os dias vê se a MeshCore One lançou uma versão nova. Se sim, tenta reaplicar a
+# isra por cima dela, só aqui dentro (nada é enviado nem instalado), e abre uma
+# issue a dizer se reaplica sem conflitos ou onde choca.
+
+on:
+  schedule:
+    - cron: '37 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: isra
+          fetch-depth: 0
+
+      - name: Ver a última versão e reaplicar a isra por cima
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git remote add avi0n https://github.com/Avi0n/MeshCoreOne.git
+          git fetch -q avi0n --tags
+          BASE=$(cat .isra-base)
+          NEW=$(git tag -l 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
+          echo "isra sobre $BASE; última versão da MeshCore One: $NEW"
+          [ "$NEW" = "$BASE" ] && { echo "Sem versão nova."; exit 0; }
+
+          TITLE="MeshCore One $NEW saiu: reaplicar a isra"
+          if gh issue list --state all --limit 200 --json title --jq '.[].title' | grep -Fxq "$TITLE"; then
+            echo "A issue já existe."; exit 0
+          fi
+
+          git config user.name isra-bot
+          git config user.email isra-bot@users.noreply.github.com
+          BEFORE=$(git log --oneline "$BASE"..HEAD)
+          if git rebase --onto "$NEW" "$BASE" HEAD > rebase.log 2>&1; then
+            RES="Reaplica sem conflitos."
+            AFTER=$(git log --oneline "$NEW"..HEAD)
+          else
+            RES="Conflito ao reaplicar, no commit $(git log -1 --oneline REBASE_HEAD 2>/dev/null). Ficheiros:
+          $(git diff --name-only --diff-filter=U)"
+            AFTER="(parou no conflito)"
+            git rebase --abort
+          fi
+
+          {
+            echo "A versão oficial **$NEW** saiu. A isra está sobre **$BASE**."
+            echo
+            echo "$RES"
+            echo
+            echo "Commits da isra antes:"
+            echo '```'; echo "$BEFORE"; echo '```'
+            echo "Depois de reaplicar (os que a MeshCore One já tem desaparecem):"
+            echo '```'; echo "$AFTER"; echo '```'
+            echo "Nada foi enviado nem instalado. Ver o ISRA.md, secção \"Quando sai uma versão nova da MeshCore One\"."
+          } > body.md
+          gh issue create --title "$TITLE" --body-file body.md

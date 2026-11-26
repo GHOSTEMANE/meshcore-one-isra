@@ -1,0 +1,38 @@
+# isra: personal build of MeshCore One, generated without touching project.yml.
+#   isra/build.sh generate   (or: xcodegen generate --spec isra.yml)
+# Overrides: own bundle IDs (one pair for Debug and Release, to spare the free
+# account's App IDs), an Info.plist copy with the extra keys (isra/make-plist.sh),
+# the ISRA and SIDELOAD compilation conditions, and no SwiftGen build phase
+# (L10n.swift is committed upstream; the fork's strings live in Isra.strings).
+include:
+  - project.yml
+
+targets:
+  MC1:
+    # upstream's plists are no longer the INFOPLIST_FILE, so keep them out of the resources
+    sources:REPLACE:
+      - path: MC1
+        excludes:
+          - "**/*.md"
+          - "Info.plist"
+          - "Info-Debug.plist"
+      - path: AppIcon.icon
+      - path: Shared
+    preBuildScripts:REPLACE: []
+    settings:
+      base:
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) SIDELOAD ISRA"
+      configs:
+        Debug:
+          INFOPLIST_FILE: isra/build/Info.plist
+          PRODUCT_BUNDLE_IDENTIFIER: io.github.ghostemane.mc1isra
+        Release:
+          INFOPLIST_FILE: isra/build/Info.plist
+          PRODUCT_BUNDLE_IDENTIFIER: io.github.ghostemane.mc1isra
+  MC1Widgets:
+    settings:
+      configs:
+        Debug:
+          PRODUCT_BUNDLE_IDENTIFIER: io.github.ghostemane.mc1isra.widgets
+        Release:
+          PRODUCT_BUNDLE_IDENTIFIER: io.github.ghostemane.mc1isra.widgets
