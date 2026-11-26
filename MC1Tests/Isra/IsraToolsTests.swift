@@ -255,6 +255,16 @@ struct IsraConfigImportGuardTests {
   }
 }
 
+@Suite("isra DM budget")
+struct IsraDMBudgetTests {
+  @Test
+  func `upstream default is eight sends`() {
+    let cost = IsraDMBudget.worstCase(DMSendBudget(directAttempts: 4, floodAttempts: 4))
+    #expect(cost.total == 8)
+    #expect(IsraDMBudget.worstCase(DMSendBudget(directAttempts: 1, floodAttempts: 0)).total == 1)
+  }
+}
+
 private extension PacketBuilder {
   static func cliReplyFrameForTest(_ text: String) -> Data {
     Data([ResponseCode.cliReply.rawValue]) + Data(text.utf8)

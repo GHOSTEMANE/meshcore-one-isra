@@ -224,3 +224,8 @@
 "Isra.Tools.Import.Value.off" = "off";
 "Isra.Tools.Import.Value.policyNone" = "no position";
 "Isra.Tools.Import.Value.policyShare" = "share position";
+
+/* MARK: - Tools: DM retries */
+"Isra.Tools.DM.worstCase" = "Worst case per message";
+"Isra.Tools.DM.worstCaseValue" = "%ld sends (%ld direct + %ld flood)";
+"Isra.Tools.DM.footer" = "Counts the app's own attempts for one direct message when no ACK comes back (the default is %ld direct + %ld flood). Flood attempts are repeated by every repeater in range, so they cost the network much more airtime. Messages typed on the radio itself are resent by the firmware, not by these settings.";

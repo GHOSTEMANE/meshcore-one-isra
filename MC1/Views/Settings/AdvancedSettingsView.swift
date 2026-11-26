@@ -42,6 +42,9 @@ struct AdvancedSettingsView: View {
       // Direct Messages Settings
       DirectMessagesSettingsSection()
 
+      #if ISRA
+        IsraDMBudgetNote() // isra: worst-case transmissions per DM
+      #endif
 
       PathFallbackSettingsSection()
 

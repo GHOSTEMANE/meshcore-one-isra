@@ -224,3 +224,8 @@
 "Isra.Tools.Import.Value.off" = "desligado";
 "Isra.Tools.Import.Value.policyNone" = "sem posição";
 "Isra.Tools.Import.Value.policyShare" = "partilhar posição";
+
+/* MARK: - Tools: reenvios de mensagens diretas */
+"Isra.Tools.DM.worstCase" = "Pior caso por mensagem";
+"Isra.Tools.DM.worstCaseValue" = "%ld envios (%ld diretos + %ld por inundação)";
+"Isra.Tools.DM.footer" = "Conta as tentativas da própria app para uma mensagem direta quando não volta o ACK (de origem são %ld diretas + %ld por inundação). As tentativas por inundação são repetidas por todos os repetidores ao alcance, por isso gastam muito mais tempo de emissão na rede. As mensagens escritas no próprio rádio são reenviadas pelo firmware, não por estas definições.";
