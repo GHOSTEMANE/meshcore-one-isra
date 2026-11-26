@@ -18,8 +18,13 @@ extension CLIToolViewModel {
     case .powerOff: await runPowerOff()
     case let .getKey(key): await runGet(key)
     case let .setName(name): await runSetName(name)
-    case let .setLatitude(latitude): await runSetLatitude(latitude)
-    case let .setLongitude(longitude): await runSetLongitude(longitude)
+    #if ISRA // isra: set lat/lon write only the coordinate, the radio GPS stays as it is
+      case let .setLatitude(latitude): await israSetCoordinate(latitude: latitude)
+      case let .setLongitude(longitude): await israSetCoordinate(longitude: longitude)
+    #else
+      case let .setLatitude(latitude): await runSetLatitude(latitude)
+      case let .setLongitude(longitude): await runSetLongitude(longitude)
+    #endif
     case let .setTxPower(power): await runSetTxPower(power)
     case let .setRadio(frequencyMHz, bandwidthKHz, spreadingFactor, codingRate):
       await runSetRadio(frequencyMHz: frequencyMHz, bandwidthKHz: bandwidthKHz, spreadingFactor: spreadingFactor, codingRate: codingRate)

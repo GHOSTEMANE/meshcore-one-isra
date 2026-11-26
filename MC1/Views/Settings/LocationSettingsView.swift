@@ -8,16 +8,22 @@ struct LocationSettingsView: View {
 
   var body: some View {
     List {
-      LocationSettingsSection(showingLocationPicker: $showingLocationPicker)
-      #if ISRA
-        IsraPhonePosSection() // isra: phone position for telemetry (MC1/Isra)
+      #if ISRA // isra: never switches the radio GPS off, advert policy read-only; phone position for telemetry
+        IsraLocationSettingsSection(showingLocationPicker: $showingLocationPicker)
+        IsraPhonePosSection() // isra: MC1/Isra
+      #else
+        LocationSettingsSection(showingLocationPicker: $showingLocationPicker)
       #endif
     }
     .themedCanvas(theme)
     .navigationTitle(L10n.Settings.Location.header)
     .navigationBarTitleDisplayMode(.inline)
     .sheet(isPresented: $showingLocationPicker) {
-      LocationPickerView.forLocalDevice(appState: appState)
+      #if ISRA // isra: a manual position writes only the coordinates
+        LocationPickerView.israForLocalDevice(appState: appState)
+      #else
+        LocationPickerView.forLocalDevice(appState: appState)
+      #endif
     }
   }
 }

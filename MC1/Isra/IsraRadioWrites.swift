@@ -27,4 +27,19 @@ enum IsraRadioWrites {
       multiAcks: multiAcks
     )
   }
+
+  /// A manual coordinate write that leaves the radio's GPS as it is (upstream's
+  /// manual-location setters switch the GPS off first). With the GPS on, its next
+  /// fix replaces the value.
+  static func setCoordinates(
+    _ settingsService: SettingsService,
+    latitude: Double? = nil,
+    longitude: Double? = nil
+  ) async throws {
+    let current = try await settingsService.getSelfInfo()
+    _ = try await settingsService.setLocationVerified(
+      latitude: latitude ?? current.latitude,
+      longitude: longitude ?? current.longitude
+    )
+  }
 }

@@ -61,3 +61,6 @@
 "Isra.UI.Access.rowLabel" = "May ask";
 "Isra.UI.Access.detailHeader" = "Telemetry of this radio";
 "Isra.UI.Access.detailFooter" = "Applies when the category is set to «Authorized contacts» in Settings › Telemetry. The favourite and the other options stay as they are.";
+
+// MARK: - The app never switches the radio GPS off (Isra.UI.Location)
+"Isra.UI.Location.gpsFooter" = "Only this switch turns the radio's GPS on or off. The app never switches it off by itself: choosing the phone's GPS, turning auto-update off or saving a position on the map leave it as it is. A position saved by hand is replaced by the GPS's next fix while the GPS is on.";

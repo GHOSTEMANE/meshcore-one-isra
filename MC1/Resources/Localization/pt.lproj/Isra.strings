@@ -61,3 +61,6 @@
 "Isra.UI.Access.rowLabel" = "Pode pedir";
 "Isra.UI.Access.detailHeader" = "Telemetria deste rádio";
 "Isra.UI.Access.detailFooter" = "Conta quando a categoria está em «Contactos autorizados» em Definições › Telemetria. O favorito e as outras opções ficam como estão.";
+
+// MARK: - A app nunca desliga o GPS do rádio (Isra.UI.Location)
+"Isra.UI.Location.gpsFooter" = "Só este interruptor liga ou desliga o GPS do rádio. A app nunca o desliga sozinha: escolher o GPS do telemóvel, desligar a atualização automática ou guardar uma posição no mapa deixam-no como está. Com o GPS ligado, uma posição guardada à mão é substituída pela próxima leitura do GPS.";
