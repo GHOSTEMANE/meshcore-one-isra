@@ -55,7 +55,7 @@ public extension SettingsService {
 
     // log when attempting to clear location
     let isClearingLocation = scaledLatSent == 0 && scaledLonSent == 0
-    logger.debug("[Location] setLocationVerified called - lat: \(latitude), lon: \(longitude), isClearing: \(isClearingLocation)")
+    logger.debug("[Location] setLocationVerified called - isClearing: \(isClearingLocation)") // isra: coordinates not logged
 
     try await setLocation(latitude: latitude, longitude: longitude)
 
@@ -71,7 +71,7 @@ public extension SettingsService {
     let tolerance: Int32 = 2
 
     guard latDiff <= tolerance, lonDiff <= tolerance else {
-      logger.error("[Location] Verification failed - sent: (\(scaledLatSent), \(scaledLonSent)), received: (\(scaledLatReceived), \(scaledLonReceived)), diff: (lat=\(latDiff), lon=\(lonDiff))")
+      logger.error("[Location] Verification failed - sent and received coordinates differ") // isra: coordinates not logged
 
       if isClearingLocation {
         logger.warning("[Location] Clear location failed - device reports non-zero coordinates. Device may have active GPS or firmware doesn't support (0,0).")

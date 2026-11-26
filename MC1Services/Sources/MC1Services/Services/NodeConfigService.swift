@@ -589,7 +589,7 @@ func executeConfigImport(
     try checkCancellation()
     if prefState.map({ locationNeedsWrite(position, current: $0) }) ?? true {
       try await writers.setLocation(position.latitude, position.longitude)
-      logger.info("Set position: \(position.latitude), \(position.longitude)")
+      logger.info("Set position") // isra: coordinates not logged
     } else {
       logger.info("Skipped position (unchanged)")
     }

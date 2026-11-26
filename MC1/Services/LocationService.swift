@@ -211,7 +211,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     Task { @MainActor in
       self.currentLocation = location
       self.isRequestingLocation = false
-      self.logger.info("Location updated: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+      self.logger.info("Location updated") // isra: coordinates not logged
 
       self.locationTimeoutTask?.cancel()
       self.locationTimeoutTask = nil
