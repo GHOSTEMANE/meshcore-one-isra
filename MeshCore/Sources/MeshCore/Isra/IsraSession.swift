@@ -86,17 +86,27 @@ extension MeshCoreSession {
   /// APP_START, which the connection manager bounds to 10 s.
   static let israHelloTimeout: TimeInterval = 3
 
-  /// APP_START then HELLO in one serialized slot, so no SYNC_NEXT_MESSAGE can slip in between
-  /// (APP_START clears the caps on the firmware).
+  /// APP_START then HELLO in one serialized slot, so no SYNC_NEXT_MESSAGE can slip in between.
+  ///
+  /// Over BLE the firmware keeps the host caps until the link drops (a later APP_START,
+  /// sent after many settings writes, does not clear them), and a session lives for one
+  /// link. So HELLO goes only with the session's first APP_START, or again after a HELLO
+  /// that got no answer; ``israResendHello()`` sends it on demand.
   func israSendAppStartAndHello(_ appStart: Data) async throws -> SelfInfo {
     try await requestResponseSerializer.withSerialization { [self] in
       let info: SelfInfo = try await sendAndMatchHoldingSerialization(appStart) { event in
         if case let .selfInfo(info) = event { return .success(info) }
         return .ignore
       }
-      await israHelloHoldingSerialization(devicePublicKey: info.publicKey)
+      if await israNeedsHello {
+        await israHelloHoldingSerialization(devicePublicKey: info.publicKey)
+      }
       return info
     }
+  }
+
+  var israNeedsHello: Bool {
+    israHelloState == .notSent || israHelloState == .failed
   }
 
   /// The caller holds `requestResponseSerializer`. Never throws: a failed HELLO only

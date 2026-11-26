@@ -37,6 +37,19 @@ struct IsraSessionTests {
       hostCaps: [.sentMessages, .phonePosition]
     ))
     #expect(hello.activeCaps == .sentMessages)
+
+    // A later APP_START (settings refresh) does not repeat HELLO: BLE keeps the caps.
+    let refresh = Task { try await session.sendAppStart() }
+    try await waitUntil("second appStart") { await transport.sentData.count == 3 }
+    await transport.simulateReceive(makeSelfInfoPacket(key: helloKey))
+    _ = try await refresh.value
+    #expect(await transport.sentData.count == 3)
+
+    // On demand it is sent again.
+    let resend = Task { try await session.israResendHello() }
+    try await waitUntil("resent hello") { await transport.sentData.count == 4 }
+    await transport.simulateReceive(Data([0xE1, 0x00, 0x03, 0x00, 0x00, 0x00, 0x01, 0x07]))
+    #expect(try await resend.value.activeCaps == [.sentMessages, .phonePosition])
     await session.stop()
   }
 
