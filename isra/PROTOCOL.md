@@ -15,9 +15,10 @@ Rules for everything below:
   frame, or any frame listed under "only after the cap", **only to a host that
   set the matching cap on that link**. A stock app never sees them.
 - Little-endian integers. Latitude/longitude are degrees x 1e6 (as cmd 14).
-- Caps are kept **per link** (BLE, USB). They are cleared when the BLE link
-  disconnects, and on `CMD_APP_START` from that link (a new session starts).
-  `CMD_DEVICE_QUERY` does not clear them (the app sends it mid-session).
+- Caps are kept **per link** (BLE, USB). On BLE they are cleared only when the
+  link disconnects: apps send `CMD_APP_START` and `CMD_DEVICE_QUERY` again
+  mid-session (after settings writes, refreshes), so neither clears them. USB has no
+  disconnect event: there `CMD_APP_START` clears them (a new session starts).
 
 ## 0xE1 / 0x00  HELLO (host caps <-> firmware caps)
 
