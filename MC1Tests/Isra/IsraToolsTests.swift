@@ -292,3 +292,14 @@ private extension PacketBuilder {
     Data([ResponseCode.cliReply.rawValue]) + Data(text.utf8)
   }
 }
+
+@Suite("isra upstream import tests opt-in")
+@MainActor
+struct IsraUpstreamImportOptInTests {
+  @Test
+  func `only the shared guard honours the test bundle marker`() {
+    #expect(IsraConfigImportGuard.upstreamTestsOptIn)
+    #expect(IsraConfigImportGuard.shared.optIns(for: UUID()) == .all)
+    #expect(IsraConfigImportGuard().optIns(for: UUID()) == .init())
+  }
+}

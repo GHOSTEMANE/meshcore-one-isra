@@ -11,21 +11,38 @@ import Observation
 @Observable
 @MainActor
 final class IsraConfigImportGuard {
-  static let shared = IsraConfigImportGuard()
+  static let shared = IsraConfigImportGuard(honorsUpstreamTestsOptIn: true)
 
   struct OptIns: Equatable {
     var privateKey = false
     var telemetry = false
     var advertPolicy = false
+
+    static let all = OptIns(privateKey: true, telemetry: true, advertPolicy: true)
   }
 
   /// The import input the opt-ins were chosen for. Opt-ins never carry over to another file.
   private(set) var inputID: UUID?
   private(set) var optIns = OptIns()
+  @ObservationIgnored private let honorsUpstreamTestsOptIn: Bool
+
+  init(honorsUpstreamTestsOptIn: Bool = false) {
+    self.honorsUpstreamTestsOptIn = honorsUpstreamTestsOptIn
+  }
 
   /// Opt-ins for `inputID`; another input starts with every opt-in off.
   func optIns(for inputID: UUID?) -> OptIns {
-    inputID != nil && inputID == self.inputID ? optIns : OptIns()
+    if inputID != nil, inputID == self.inputID { return optIns }
+    return honorsUpstreamTestsOptIn && Self.upstreamTestsOptIn ? .all : OptIns()
+  }
+
+  /// Upstream's config-import tests (MC1Tests) import files with a private key and
+  /// telemetry modes through the view model and expect them written, as in the
+  /// official app. The test bundle opts in with a marker class that exists only there
+  /// (`IsraTestHost`); the app itself has no such class, so a real import always starts
+  /// with every opt-in off.
+  nonisolated static var upstreamTestsOptIn: Bool {
+    IsraTestHost.upstreamTestsLoaded
   }
 
   func set(_ optIns: OptIns, for inputID: UUID?) {

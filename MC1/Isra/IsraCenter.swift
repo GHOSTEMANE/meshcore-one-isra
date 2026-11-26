@@ -31,7 +31,9 @@ final class IsraCenter {
   /// Call before the connection manager starts connecting.
   nonisolated static func installHooks() {
     IsraHooks.setHostCapsProvider { key in
-      IsraSettings.hostCaps(devicePublicKey: key)
+      // Upstream's tests talk to mock radios that never answer HELLO (IsraTestHost).
+      if IsraTestHost.upstreamTestsLoaded { return nil }
+      return IsraSettings.hostCaps(devicePublicKey: key)
     }
   }
 
