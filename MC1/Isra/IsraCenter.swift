@@ -92,6 +92,7 @@ final class IsraCenter {
   /// Turns the feature on or off for a device, and tells a connected radio at once.
   func setPhonePositionEnabled(_ enabled: Bool, devicePublicKey key: Data) async {
     IsraSettings.setPhonePositionEnabled(enabled, devicePublicKey: key)
+    if enabled { phonePos.resetBackoff() }
     guard devicePublicKey == key, session != nil else { return }
     await resendHello()
     if enabled { phonePos.handlePositionRequest() }
@@ -103,6 +104,8 @@ final class IsraCenter {
       phonePos.unbind()
       return
     }
+    // A new HELLO may follow a change on the radio (Phone pos, GPS): answer at once again.
+    phonePos.resetBackoff()
     if phonePos.isBound, !sendNow { return }
     phonePos.bind(sender: { frame in
       try await session.israSendPhonePosition(frame)

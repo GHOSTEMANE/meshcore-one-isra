@@ -39,6 +39,8 @@
 "Isra.Core.phonePos.error.device" = "O rádio respondeu com o erro %ld.";
 "Isra.Core.phonePos.error.noFix" = "Sem posição do iOS (autorização ou sem fix).";
 "Isra.Core.phonePos.error.notSent" = "Não enviada: o rádio não respondeu.";
+"Isra.Core.phonePos.error.unusableFix" = "A posição do iPhone era pouco precisa (mais de 1000 m) ou antiga: não foi enviada.";
+"Isra.Core.phonePos.backoff" = "A app responde ao próximo pedido do rádio depois das %@.";
 // MARK: - Telemetria por categoria (Isra.UI.Telemetry / Isra.UI.Access)
 "Isra.UI.Telemetry.base" = "Bateria e estado";
 "Isra.UI.Telemetry.location" = "Localização";

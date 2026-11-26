@@ -39,6 +39,8 @@
 "Isra.Core.phonePos.error.device" = "The radio answered error %ld.";
 "Isra.Core.phonePos.error.noFix" = "No position from iOS (permission or no fix).";
 "Isra.Core.phonePos.error.notSent" = "Not sent: no answer from the radio.";
+"Isra.Core.phonePos.error.unusableFix" = "The iPhone position was too inaccurate (over 1000 m) or too old: not sent.";
+"Isra.Core.phonePos.backoff" = "The app answers the radio's next request after %@.";
 // MARK: - Telemetry per category (Isra.UI.Telemetry / Isra.UI.Access)
 "Isra.UI.Telemetry.base" = "Battery and status";
 "Isra.UI.Telemetry.location" = "Location";

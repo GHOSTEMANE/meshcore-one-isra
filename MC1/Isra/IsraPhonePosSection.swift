@@ -49,6 +49,11 @@ struct IsraPhonePosSection: View {
             Text(failureText(failure))
               .font(.footnote)
               .foregroundStyle(.orange)
+            if let until = service.backoffUntil, until > Date() {
+              Text(IsraL10n.tr("Isra.Core.phonePos.backoff", until.formatted(date: .omitted, time: .shortened)))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+            }
           }
         }
       } header: {
@@ -151,6 +156,7 @@ struct IsraPhonePosSection: View {
     case .rejected: tr("error.rejected")
     case let .deviceError(code): IsraL10n.tr("Isra.Core.phonePos.error.device", Int(code))
     case .noFix: tr("error.noFix")
+    case .unusableFix: tr("error.unusableFix")
     case .notSent: tr("error.notSent")
     }
   }
