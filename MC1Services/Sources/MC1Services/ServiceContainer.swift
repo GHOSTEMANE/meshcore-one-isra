@@ -101,6 +101,9 @@ public final class ServiceContainer {
 
   let plainTextSendGate: PlainTextSendGate
 
+  // isra: messages composed on the radio (Isra/IsraSentMessageService.swift)
+  @ObservationIgnored var israSentMessages: IsraSentMessageService?
+
   // MARK: - Notification Actions
 
   /// Executes the multi-service transactions behind notification actions
@@ -360,6 +363,7 @@ public final class ServiceContainer {
     await remoteNodeService.startEventMonitoring()
     guard eventMonitoringState == .starting, !isTornDown else { return }
 
+    await israStartSentMessages(radioID: radioID) // isra: before the first drain
     // Always start message event monitoring so handlers are ready for polled messages
     await messagePollingService.startMessageEventMonitoring(radioID: radioID)
     guard eventMonitoringState == .starting, !isTornDown else { return }
@@ -417,6 +421,7 @@ public final class ServiceContainer {
     // reconnect within the same session or expire via `ackGiveUpWindow`.
     await messageService.stopAckExpiryChecking()
     await messagePollingService.stopMessageEventMonitoring()
+    await israStopSentMessages() // isra
     await remoteNodeService.stopEventMonitoring()
 
     // Flush debug log buffer

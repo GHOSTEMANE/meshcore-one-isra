@@ -278,6 +278,15 @@ public extension MeshCoreSession {
   }
 
   private func performGetMessage(timeout: TimeInterval? = nil) async throws -> MessageResult {
+    // isra: a reply with an unknown frame code (e.g. firmware extension frames, which reach
+    // event subscribers anyway) is skipped and the next message fetched, instead of timing out.
+    for _ in 0..<64 {
+      if let result = try await performGetMessageOnce(timeout: timeout) { return result }
+    }
+    throw MeshCoreError.timeout
+  }
+
+  private func performGetMessageOnce(timeout: TimeInterval?) async throws -> MessageResult? {
     try await requestResponseSerializer.withSerialization { [self] in
       let timeoutSeconds = timeout ?? configuration.defaultTimeout
 
@@ -291,6 +300,8 @@ public extension MeshCoreSession {
         case .contactMessageReceived, .channelMessageReceived, .channelDataReceived,
              .noMoreMessages, .error:
           true
+        case let .parseFailure(data, reason): // isra
+          IsraProtocol.isUnknownReplyFrame(data: data, reason: reason)
         default:
           false
         }
@@ -299,7 +310,7 @@ public extension MeshCoreSession {
       let data = PacketBuilder.getMessage()
       try await sendSessionData(data)
 
-      return try await withThrowingTaskGroup(of: MessageResult.self) { group in
+      return try await withThrowingTaskGroup(of: MessageResult?.self) { group in
         group.addTask {
           for await event in stream {
             if Task.isCancelled {
@@ -317,6 +328,8 @@ public extension MeshCoreSession {
               return .noMoreMessages
             case let .error(code):
               throw MeshCoreError.deviceError(code: code ?? 0)
+            case .parseFailure: // isra: unknown reply frame, fetch the next one
+              return nil
             default:
               continue
             }
@@ -342,7 +355,7 @@ public extension MeshCoreSession {
           throw MeshCoreError.timeout
         }
 
-        return result
+        return result // isra: nil = unknown reply frame skipped
       }
     }
   }
