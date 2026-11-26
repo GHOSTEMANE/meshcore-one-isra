@@ -87,6 +87,10 @@ private struct ImportPreviewList: View {
 
   var body: some View {
     List {
+      #if ISRA
+        IsraConfigImportDiffSection(viewModel: viewModel) // isra: full diff and opt-ins
+      #endif
+
       if config.name != nil || config.privateKey != nil {
         NodeIdentitySection(viewModel: viewModel, config: config)
       }

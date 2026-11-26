@@ -77,7 +77,13 @@ extension NodeConfigImportViewModel {
         }
       }
       do {
-        try await service.importConfig(preview.input.config, sections: preview.sections, radioID: preview.source.radioID) {
+        #if ISRA
+          // isra: private key, telemetry modes and advert policy are left out unless opted in
+          let config = IsraConfigImportGuard.shared.filtered(preview.input.config, inputID: preview.input.id)
+        #else
+          let config = preview.input.config
+        #endif
+        try await service.importConfig(config, sections: preview.sections, radioID: preview.source.radioID) {
           progressContinuation.yield($0)
         }
         progressContinuation.finish()

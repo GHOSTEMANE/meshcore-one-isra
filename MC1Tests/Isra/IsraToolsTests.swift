@@ -192,6 +192,69 @@ struct IsraAirtimeMathTests {
   }
 }
 
+@Suite("isra config import guard")
+struct IsraConfigImportGuardTests {
+  private let config = MeshCoreNodeConfig(
+    name: "Test Node",
+    publicKey: "aa",
+    privateKey: String(repeating: "ab", count: 64),
+    otherSettings: .init(
+      manualAddContacts: 1, advertLocationPolicy: 1, telemetryModeBase: 2, telemetryModeLocation: 2,
+      telemetryModeEnvironment: 2, multiAcks: nil
+    )
+  )
+
+  @Test
+  func `sensitive fields are dropped unless opted in`() {
+    let filtered = IsraConfigImportGuard.filter(config, .init())
+    #expect(filtered.privateKey == nil)
+    #expect(filtered.otherSettings?.telemetryModeBase == nil)
+    #expect(filtered.otherSettings?.telemetryModeLocation == nil)
+    #expect(filtered.otherSettings?.advertLocationPolicy == nil)
+    #expect(filtered.otherSettings?.manualAddContacts == 1)
+    #expect(filtered.name == "Test Node")
+  }
+
+  @Test
+  func `opt-ins keep their fields`() {
+    let filtered = IsraConfigImportGuard.filter(config, .init(privateKey: true, telemetry: true, advertPolicy: true))
+    #expect(filtered == config)
+  }
+
+  @Test
+  func `other settings that end up empty are dropped`() {
+    var onlyTelemetry = config
+    onlyTelemetry.otherSettings = .init(telemetryModeBase: 2)
+    #expect(IsraConfigImportGuard.filter(onlyTelemetry, .init()).otherSettings == nil)
+  }
+
+  @Test
+  func `the diff marks excluded and changed fields`() {
+    var current = IsraConfigImportGuard.Current()
+    current.name = "Test Node"
+    current.telemetryBase = 2
+    current.telemetryLoc = 1
+    let rows = IsraConfigImportGuard.rows(config, current: current, optIns: .init())
+    let name = rows.first { $0.id == "name" }
+    #expect(name?.changes == false)
+    let loc = rows.first { $0.id == "telLoc" }
+    #expect(loc?.changes == true)
+    #expect(loc?.excluded == true)
+    #expect(rows.first { $0.id == "privateKey" }?.excluded == true)
+  }
+
+  @Test
+  @MainActor
+  func `opt-ins never carry over to another file`() {
+    let guardModel = IsraConfigImportGuard()
+    let first = UUID()
+    #expect(guardModel.filtered(config, inputID: first).privateKey == nil)
+    guardModel.set(.init(privateKey: true), for: first)
+    #expect(guardModel.filtered(config, inputID: first).privateKey != nil)
+    #expect(guardModel.filtered(config, inputID: UUID()).privateKey == nil)
+  }
+}
+
 private extension PacketBuilder {
   static func cliReplyFrameForTest(_ text: String) -> Data {
     Data([ResponseCode.cliReply.rawValue]) + Data(text.utf8)
