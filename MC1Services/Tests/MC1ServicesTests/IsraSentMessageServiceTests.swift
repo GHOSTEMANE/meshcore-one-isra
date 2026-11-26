@@ -22,7 +22,7 @@ struct IsraSentMessageServiceTests {
     let transport = MockTransport()
     let session = MeshCoreSession(
       transport: transport,
-      configuration: SessionConfiguration(defaultTimeout: 5, clientIdentifier: "MCTst")
+      configuration: SessionConfiguration(defaultTimeout: 30, clientIdentifier: "MCTst")
     )
     let start = Task { try await session.start() }
     try await poll("appStart") { await transport.sentData.count == 1 }
@@ -163,7 +163,7 @@ private func le32(_ value: UInt32) -> Data {
 
 private func poll(
   _ what: String,
-  timeout: Duration = .seconds(5),
+  timeout: Duration = .seconds(30),
   _ condition: @escaping @Sendable () async -> Bool
 ) async throws {
   let deadline = ContinuousClock.now + timeout

@@ -173,7 +173,9 @@ final class IsraPhonePosService: NSObject {
   // MARK: - Sending
 
   private func send(_ location: CLLocation) {
-    guard let sender, !isSending else {
+    // A send in flight answers this request too, and ends the background task itself.
+    guard !isSending else { return }
+    guard let sender else {
       endBackgroundTask()
       return
     }
