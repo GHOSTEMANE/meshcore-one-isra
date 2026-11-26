@@ -42,6 +42,35 @@ Versão atual: **v1.7.1-isra1**, sobre a MeshCore One **v1.7.1**.
 - **Robustez (vale também para outros firmwares):** se, ao esvaziar a fila de mensagens, chegar uma trama que a app não conhece, a app passa à seguinte em vez de esperar o tempo limite e parar. Na MeshCore One oficial isso faz parar a receção das mensagens seguintes.
 - **Como está feito:** `MC1Services/Sources/MC1Services/Isra/IsraSentMessageService.swift` (liga-se antes da primeira leitura de mensagens, só nas versões isra) e uma alteração pequena em `MeshCoreSession+Messaging.swift`.
 - **Como testar:** escrever no rádio uma mensagem direta a um contacto de teste com a app ligada: aparece na conversa do contacto do meu lado, sem notificação, e passa a entregue quando o contacto confirma. Repetir com a app fechada e abri-la depois: a mensagem aparece e o estado é atualizado. Escrever no #ping a partir do rádio: aparece como minha e conta as repetições. Testes: `cd MC1Services && swift test --filter IsraSentMessage`; `cd MeshCore && swift test --filter Isra`.
+### Definições e proteções do rádio
+
+Regra geral: a app não reescreve definições do rádio pelas costas. As escritas do registo "other params" (adição manual, multi-acks, os três modos de telemetria, política de posição nos adverts) levam sempre os seis campos; a app relê o SELF_INFO antes de cada escrita, para os campos que não muda irem com o valor real do rádio e não com uma cópia antiga.
+
+1. **Telemetria por categoria** (`MC1/Isra/Settings/IsraTelemetrySection.swift`, `IsraTelemetryAccessViews.swift`; serviço em `MC1Services/Sources/MC1Services/Isra/IsraTelemetryAccess.swift`).
+   - O quê: em Definições avançadas › Telemetria há três escolhas, Bateria e estado / Localização / Sensores, cada uma Ninguém / Contactos autorizados / Todos (0/1/2). Cada escolha grava só o seu modo. A ligação «Contactos autorizados» está sempre visível e mostra, por contacto, o que pode pedir: Nada / Estado / Estado + localização / Estado + sensores / Tudo. A mesma escolha aparece na ficha de cada contacto (secção «Telemetria deste rádio»).
+   - Porquê: na oficial, o interruptor «só contactos de confiança» reescrevia os três modos de uma vez, o da localização copiava o valor da bateria, a lista só aparecia com bateria = 1 e cada contacto recebia ou perdia as três autorizações juntas (0x0E). A minha configuração (bateria 2, localização 1, sensores 0) não se conseguia manter pela app.
+   - Como: os modos vão por escrita de um só campo; nos contactos só mudam os bits 0x02/0x04/0x08, a partir do registo atual do rádio (o favorito 0x01 e a CLI remota 0x10 ficam como o rádio os tem).
+   - Testar: com o rádio em 2/1/0, mudar Sensores para Ninguém e voltar a pôr Contactos autorizados; confirmar por USB com a meshcli que bateria (2) e localização (1) não mudaram. Num contacto favorito, escolher «Estado + localização» e confirmar pela meshcli que as flags ficam 7 (favorito mantido).
+2. **A app nunca desliga o GPS do rádio** (`IsraLocationSettingsSection.swift`, `IsraLocationPicker.swift`, `set lat`/`set lon` na CLI).
+   - O quê: escolher o GPS do telemóvel, desligar a atualização automática ou guardar uma posição à mão (mapa ou CLI) já não desligam o GPS do rádio. Só o interruptor «Ativar GPS do dispositivo» o liga ou desliga. O rodapé explica.
+   - Porquê: na oficial havia três sítios que desligavam o GPS sem o dizer, e com o GPS desligado a telemetria deixa de levar posição.
+   - Testar: com o GPS do rádio ligado, mudar a fonte para o telemóvel, desligar a atualização automática e guardar uma posição no mapa; o interruptor continua ligado e o aparelho também mostra o GPS ligado.
+3. **Posição nos adverts só de leitura** (`IsraLocationSettingsSection.swift`, ganchos em Nós, Mensagens diretas e CLI `set multi.acks`).
+   - O quê: na secção Localização aparece «Posição nos adverts: Desligada / Ligada», lida do rádio. Se estiver ligada aparece um aviso a dizer onde se desliga no aparelho (Settings › All settings › Privacy › Advert pos). O interruptor «Partilhar localização publicamente» desapareceu e nenhum caminho da app grava a política (nem o mapa, nem o interruptor do GPS).
+   - Porquê: a decisão é adverts sem posição; a política só se muda no aparelho.
+   - Testar: com a política 0, mudar multi-acks e a adição de contactos e confirmar por USB com a meshcli que a política continua 0. Mudar a política no aparelho, voltar à app e ver o aviso.
+4. **Proteções do rádio** (`IsraDeviceActionsSection.swift`, `IsraBluetoothSection.swift`, `MC1Services/…/Isra/IsraCLIGuard.swift`).
+   - Reiniciar: o botão «Reiniciar dispositivo» e o `reboot` na CLI do rádio local já não reiniciam; mostram «O Solo não deve ser reiniciado por software: desliga o interruptor 15 s.». O `reboot` numa sessão remota (repetidor) continua a funcionar. Desligar continua.
+   - PIN: só «Aleatório (no ecrã)» (grava 0) ou «Personalizado» (6 dígitos, 123456 recusado). Um 123456 já gravado aparece como personalizado, com aviso. Mudar o PIN já não reinicia o rádio: o rádio grava-o e usa-o depois de desligar e voltar a ligar (interruptor 15 s); a app lê-o de volta e diz isso.
+   - OTA: `start ota` e qualquer comando OTA/DFU são recusados na CLI, local e remota, e saíram das sugestões. A app não tem outro caminho de OTA.
+   - Porquê: o Solo pode ficar parado no arranque depois de um reinício por software; firmware só por USB; 123456 é conhecido de toda a gente.
+   - Testar: tocar em Reiniciar e escrever `reboot` e `start ota` na CLI (nada sai para o rádio); mudar o PIN para aleatório e confirmar no ecrã do rádio depois de o desligar e ligar.
+5. **CLI: chaves desconhecidas vão para o rádio**.
+   - O quê: `get`/`set` de uma chave que a app não conhece (nem chave própria nem custom var listada pelo rádio) segue para a consola do rádio (comando 66) em vez de responder «Unknown var». As chaves que a app conhece continuam a ser tratadas por ela.
+   - Porquê: as chaves da consola do Solo (ex. `telemetry.loc.phone`, `gps.interval`) passam a funcionar na CLI da app.
+   - Testar: na CLI, `get telemetry.loc.phone` devolve o valor do rádio; `get name` continua a vir da app.
+
+Testes automáticos: `swift test --package-path MC1Services --filter Isra` (bits 0x0E, modos, escrita do contacto a partir do registo do rádio, recusas da CLI).
 
 ## Compilar e instalar
 
