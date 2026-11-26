@@ -19,6 +19,30 @@ Versão atual: **v1.7.1-isra1**, sobre a MeshCore One **v1.7.1**.
 
 (Preenchido à medida que entram: o quê, porquê, como testar.)
 
+### 1. Protocolo 0xE1 e HELLO
+
+- **O quê:** a app fala o protocolo isra (`isra/PROTOCOL.md`, revisão 1). Em cada ligação, logo a seguir ao primeiro `APP_START` e antes de ir buscar mensagens, envia `HELLO` com o que sabe fazer (mensagens enviadas no aparelho; posição do telemóvel só se estiver ligada para esse rádio). Guarda o que o rádio responde (funções, revisão, estado do Phone pos e do GPS). Em Definições › Informações do dispositivo, secção Firmware, aparece a linha **Firmware isra** (`caps 0x3, revisão 1`, ou `não (firmware oficial)`).
+- **Porquê:** cada função nova só liga se o rádio disser que a tem. Com o firmware oficial o rádio responde «comando desconhecido» e a app comporta-se como a MeshCore One.
+- **Como está feito:** código em `MeshCore/Sources/MeshCore/Isra/` (pacote: construir e ler as tramas, `HELLO` no mesmo passo do `APP_START`) e `MC1/Isra/IsraCenter.swift`. O pacote não vê a condição `ISRA`, por isso só envia `HELLO` depois de a app instalar o `IsraHooks` (só nas versões isra). Por BLE o rádio guarda as funções até a ligação cair, por isso o `HELLO` vai uma vez por ligação (e outra vez quando se muda a opção da posição).
+- **Como testar:** ligar ao rádio com o solo-isra e ver a linha Firmware isra; ligar a um rádio com firmware oficial e ver `não (firmware oficial)`, com tudo o resto igual à app oficial. Testes: `cd MeshCore && swift test --filter Isra`.
+
+### 2. Posição do telemóvel para a telemetria
+
+- **O quê:** em Definições › Localização, secção **Posição do telemóvel para a telemetria** (por rádio, desligada de origem). Com ela ligada, quando o rádio pede a posição (o GPS dele está a dormir com o GPS pwr), a app envia a posição do iPhone: logo se tiver uma com menos de 2 minutos, senão pede uma nova ao iOS (precisão de 100 m). Envia também uma vez depois do `HELLO` e, com a autorização «Sempre», quando o iPhone muda bastante de sítio (no máximo de 5 em 5 minutos). A secção mostra a autorização de localização (com botão para pedir «Sempre» ou abrir as Definições do iOS), se o firmware suporta, o estado do «Phone pos» e do GPS no rádio (com o caminho no menu do rádio se estiverem desligados), a hora da última posição enviada e o último erro.
+- **Porquê:** a telemetria para os contactos de confiança sai com a posição do iPhone enquanto o GPS do rádio dorme, sem gastar bateria do rádio. A posição fica só na RAM do rádio: nunca em adverts nem na flash.
+- **Privacidade:** as coordenadas nunca vão para o registo da app (só a idade e a precisão) nem são guardadas; só a hora do último envio.
+- **Limites:** a app responde quando está ligada ao rádio, também em segundo plano (o pedido do rádio acorda a app pelo Bluetooth e ela pede uns segundos extra ao iOS para obter a posição). A mudança de sítio só é vigiada enquanto há ligação. Se o iOS terminar a app, ela **não** volta a ligar-se sozinha por causa da localização: seria preciso arrancar o gestor de ligação fora do ecrã, no arranque em segundo plano, o que mexe no arranque da app oficial (e no limite de tempo do iOS) sem poder ser testado aqui. Nesse caso a posição expira no rádio e o GPS dele volta a acordar, como previsto no protocolo. Abrir a app volta a ligar.
+- **Erros:** «O rádio recusou: ligue Phone pos, o GPS e o GPS pwr» (o rádio disse BAD_STATE); «Posição recusada (precisão/idade)» (ILLEGAL_ARG: precisão pior que 1000 m ou mais de 10 minutos).
+- **Como testar:** com o rádio em solo-isra, Phone pos, GPS e GPS pwr ligados no rádio: ligar a opção, dar «Sempre» à localização, ver «Última posição enviada» com a hora. Pedir a telemetria do meu rádio a partir do rádio do Rui (contacto de confiança com localização): deve vir a posição do iPhone. Desligar o Phone pos no rádio, tocar em «Ler outra vez o estado do rádio» e ver o aviso.
+
+### 3. Mensagens escritas no aparelho
+
+- **O quê:** as mensagens escritas no teclado do rádio (tramas 30, 31 e 32) aparecem na app como **enviadas por mim**, na conversa certa, sem notificação, sem contar como por ler e sem mexer no «ouvido há». Mensagens diretas: estado enviado, entregue (com o tempo de ida e volta), a repetir (tentativa) ou falhada; o ✓ de entrega chega em direto (a app calcula os códigos de confirmação das tentativas 0 a 3) ou mais tarde pela trama 32, se a entrega aconteceu com o telemóvel longe. Canais: o texto sem o «nome: », com as repetições ouvidas contadas como nas mensagens enviadas pela app. A mesma mensagem não aparece duas vezes (destinatário, hora e texto). A hora de ordenação é a do rádio, ou a de chegada se o relógio do rádio estiver errado.
+- **Porquê:** substitui o espelho do isra2 («texto · enviada pelo Wio» do lado recebido). O rádio só manda estas tramas a uma app que as pediu no `HELLO`; para as outras continua a converter em mensagem recebida com a etiqueta.
+- **Robustez (vale também para outros firmwares):** se, ao esvaziar a fila de mensagens, chegar uma trama que a app não conhece, a app passa à seguinte em vez de esperar o tempo limite e parar. Na MeshCore One oficial isso faz parar a receção das mensagens seguintes.
+- **Como está feito:** `MC1Services/Sources/MC1Services/Isra/IsraSentMessageService.swift` (liga-se antes da primeira leitura de mensagens, só nas versões isra) e uma alteração pequena em `MeshCoreSession+Messaging.swift`.
+- **Como testar:** escrever no rádio uma mensagem direta a um contacto de teste com a app ligada: aparece na conversa do contacto do meu lado, sem notificação, e passa a entregue quando o contacto confirma. Repetir com a app fechada e abri-la depois: a mensagem aparece e o estado é atualizado. Escrever no #ping a partir do rádio: aparece como minha e conta as repetições. Testes: `cd MC1Services && swift test --filter IsraSentMessage`; `cd MeshCore && swift test --filter Isra`.
+
 ## Compilar e instalar
 
 Precisa do Xcode e do XcodeGen (`brew install xcodegen`). Não precisa de `make` nem do SwiftGen.
