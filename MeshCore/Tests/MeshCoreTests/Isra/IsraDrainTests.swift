@@ -5,7 +5,7 @@ import Testing
 @Suite("isra drain robustness")
 struct IsraDrainTests {
   @Test
-  func `drain skips an unknown reply frame and fetches the next message`() async throws {
+  func `drain skips a device-sent message frame and fetches the next message`() async throws {
     let transport = MockTransport()
     let session = MeshCoreSession(
       transport: transport,
@@ -17,11 +17,11 @@ struct IsraDrainTests {
     let task = Task { try await session.getMessage() }
     try await waitUntil("first SYNC") { await transport.sentData.count == base + 1 }
 
-    var frame30 = Data([30, 0, 0, 0, 1, 2, 3, 4, 5, 6, 0xFF, 0, 1, 0, 0, 0])
-    frame30.append(Data("hi".utf8))
-    await transport.simulateReceive(frame30)
+    var sentDM = Data([0xE1, 0x20, 0, 0, 0, 1, 2, 3, 4, 5, 6, 0xFF, 0, 1, 0, 0, 0])
+    sentDM.append(Data("hi".utf8))
+    await transport.simulateReceive(sentDM)
 
-    try await waitUntil("second SYNC after the unknown frame") { await transport.sentData.count == base + 2 }
+    try await waitUntil("second SYNC after the SENT_DM frame") { await transport.sentData.count == base + 2 }
     #expect(await transport.sentData.last == PacketBuilder.getMessage())
     await transport.simulateReceive(Data([ResponseCode.noMoreMessages.rawValue]))
 

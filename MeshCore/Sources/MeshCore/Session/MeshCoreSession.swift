@@ -146,8 +146,8 @@ public actor MeshCoreSession: MeshCoreSessionProtocol {
     floodScopeRecoveryHandler?()
   }
 
-  // isra: outcome of the 0xE1 HELLO sent after APP_START (Isra/IsraSession.swift)
-  var israHelloState: IsraHelloState = .notSent
+  // isra: 0xE1 HELLO outcome and negotiated features (Isra/IsraSession.swift)
+  var isra = IsraSessionState()
 
   private var receiveTask: Task<Void, Never>?
   private var autoMessageFetchTask: Task<Void, Never>?

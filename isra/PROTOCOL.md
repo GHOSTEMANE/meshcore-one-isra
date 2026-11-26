@@ -1,4 +1,4 @@
-# isra companion protocol extensions (revision 1)
+# isra companion protocol extensions (revision 2)
 
 Shared by the firmware fork (MeshCore Solo + isra, "isra4") and the app fork
 (MeshCore One + isra, "MC1 isra"). The same file is kept in both repositories:
@@ -18,7 +18,8 @@ Rules for everything below:
 - Caps are kept **per link** (BLE, USB). On BLE they are cleared only when the
   link disconnects: apps send `CMD_APP_START` and `CMD_DEVICE_QUERY` again
   mid-session (after settings writes, refreshes), so neither clears them. USB has no
-  disconnect event: there `CMD_APP_START` clears them (a new session starts).
+  disconnect event: there `CMD_APP_START` clears them (a new session starts), so a
+  host on a non-BLE link sends HELLO again after every `CMD_APP_START`.
 
 ## 0xE1 / 0x00  HELLO (host caps <-> firmware caps)
 
@@ -39,7 +40,7 @@ Firmware -> host (reply):
 [0] 0xE1
 [1] 0x00
 [2..5] firmware caps (u32), same bits: what this firmware can do
-[6]    protocol revision (1)
+[6]    protocol revision (2)
 [7]    device state flags (u8)
          bit 0  phone_loc setting ("Phone pos") is on
          bit 1  GPS master is on
@@ -102,17 +103,53 @@ the position then expires and the GPS takes over).
 
 ## 3. Messages sent from the device (spec: protocolo-mensagens-do-aparelho.md)
 
-Frames 30 / 31 / 32 keep the layout of that document, with these changes:
+Revision 2 moves the three frames under 0xE1, so they can never collide with
+response codes upstream MeshCore allocates later (30, 31, 32 are its next free
+ones). Each frame is the draft's frame 30 / 31 / 32 with its first byte replaced by
+the two bytes `0xE1, sub-op`; every later offset moves by one:
+
+```
+0xE1 / 0x20  SENT_DM       (draft frame 30)
+[0] 0xE1 [1] 0x20
+[2] status (0 sent / awaiting ack, 1 delivered, 2 retrying, 3 failed)
+[3] attempt (0-3)   [4] reserved 0
+[5..10]  recipient pubkey prefix (6)
+[11]     path_len used, or 0xFF
+[12]     txt_type
+[13..16] sender timestamp (u32)
+[17..]   text (UTF-8)
+
+0xE1 / 0x21  SENT_CHANNEL  (draft frame 31)
+[0] 0xE1 [1] 0x21
+[2..4]   reserved 0
+[5]      channel index
+[6]      path_len (0xFF)
+[7]      txt_type
+[8..11]  sender timestamp (u32)
+[12..]   text (UTF-8), the body only, without "name: "
+
+0xE1 / 0x22  SENT_STATUS   (draft frame 32)
+[0] 0xE1 [1] 0x22
+[2..7]   recipient pubkey prefix (6)
+[8..11]  sender timestamp (u32)
+[12]     status: 1 delivered, 2 retrying, 3 failed
+[13]     attempt (0-3)
+[14..17] round trip ms (delivered), else 0
+```
+
+They are delivered through the offline queue (`PUSH_CODE_MSG_WAITING` ->
+`CMD_SYNC_NEXT_MESSAGE`) like any queued message. Changes from the draft:
 
 - The cap is bit 0 of HELLO (not a separate command 67).
-- Frame 30 `[1]` = status (0 sent / awaiting ack, 1 delivered, 2 retrying,
-  3 failed), `[2]` = attempt, `[3]` = reserved 0. While a frame 30 is still in the
-  queue, a status change rewrites these bytes instead of queuing a frame 32.
-- The firmware queues 30 / 31 always. At `CMD_SYNC_NEXT_MESSAGE`, for a host without
-  the cap, a 30 / 31 is converted to the ordinary received frame (16 / 17 when the
-  host's `app_target_ver` >= 3, else 7 / 8) with the " · enviada pelo Wio" tag
-  (the isra2 mirror), and a 32 is dropped.
-- Frame 31 counts as a channel entry for queue pressure.
+- While a SENT_DM is still in the queue, a status change rewrites its bytes
+  [2] and [3] instead of queuing a SENT_STATUS.
+- The firmware queues SENT_DM / SENT_CHANNEL always. At `CMD_SYNC_NEXT_MESSAGE`,
+  for a host without the cap, they are converted to the ordinary received frame
+  (16 / 17 when the host's `app_target_ver` >= 3, else 7 / 8) with the
+  " · enviada pelo Wio" tag (the isra2 mirror), and a SENT_STATUS is skipped.
+- Queue pressure: when the queue is full, the oldest device-sent entry
+  (SENT_DM / SENT_CHANNEL / SENT_STATUS) is evicted first, then the oldest channel
+  message; a SENT_STATUS never evicts anything (it is dropped instead).
 - Device-sent DMs use `getCurrentTimeUnique()`.
 - Live: when a device-sent DM is acked and a host with the cap is connected, the
   firmware also pushes `PUSH_CODE_SEND_CONFIRMED` (0x82) with the ack code and

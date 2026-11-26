@@ -3,7 +3,7 @@ import Foundation
 import MeshCore
 import Testing
 
-/// Frames 30 / 31 / 32 from an isra firmware (isra/PROTOCOL.md section 3).
+/// SENT_DM / SENT_CHANNEL / SENT_STATUS from an isra firmware (isra/PROTOCOL.md rev 2, section 3).
 @Suite("isra device-sent messages")
 @MainActor
 struct IsraSentMessageServiceTests {
@@ -18,7 +18,7 @@ struct IsraSentMessageServiceTests {
     let contactID: UUID
   }
 
-  private func makeFixture() async throws -> Fixture {
+  private func makeFixture(negotiated: Bool = true) async throws -> Fixture {
     let transport = MockTransport()
     let session = MeshCoreSession(
       transport: transport,
@@ -42,14 +42,15 @@ struct IsraSentMessageServiceTests {
       rxLogService: container.rxLogService,
       heardRepeatsService: container.heardRepeatsService,
       receiveLifetime: container.receiveLifetime,
-      radioID: radioID
+      radioID: radioID,
+      isNegotiated: { negotiated }
     )
     await service.start()
     return Fixture(transport: transport, container: container, service: service, radioID: radioID, contactID: contact.id)
   }
 
-  private func frame30(text: String, timestamp: UInt32, status: UInt8 = 0, attempt: UInt8 = 0) -> Data {
-    var data = Data([30, status, attempt, 0])
+  private func sentDM(text: String, timestamp: UInt32, status: UInt8 = 0, attempt: UInt8 = 0) -> Data {
+    var data = Data([0xE1, 0x20, status, attempt, 0])
     data.append(contactKey.prefix(6))
     data.append(0xFF)
     data.append(0)
@@ -59,13 +60,13 @@ struct IsraSentMessageServiceTests {
   }
 
   @Test
-  func `frame 30 is stored as an outgoing DM and a live ACK delivers it`() async throws {
+  func `SENT_DM is stored as an outgoing DM and a live ACK delivers it`() async throws {
     let fixture = try await makeFixture()
     let store = fixture.container.dataStore
     let timestamp = UInt32(Date().timeIntervalSince1970) - 5
     let heardBefore = try await store.fetchContact(id: fixture.contactID)?.lastHeardTimestamp
 
-    await fixture.transport.simulateReceive(frame30(text: "OK", timestamp: timestamp))
+    await fixture.transport.simulateReceive(sentDM(text: "OK", timestamp: timestamp))
     try await poll("stored") {
       await ((try? store.fetchMessages(contactID: fixture.contactID, limit: 10, offset: 0))?.count ?? 0) == 1
     }
@@ -80,7 +81,7 @@ struct IsraSentMessageServiceTests {
     #expect(contact.lastHeardTimestamp == heardBefore)
 
     // Same frame again (re-queued after a lost link): no duplicate.
-    await fixture.transport.simulateReceive(frame30(text: "OK", timestamp: timestamp))
+    await fixture.transport.simulateReceive(sentDM(text: "OK", timestamp: timestamp))
 
     // Live 0x82 for the radio's second attempt.
     let code = AckCodeBuilder.expectedAck(timestamp: timestamp, attempt: 1, text: "OK", senderPublicKey: selfKey)
@@ -95,33 +96,33 @@ struct IsraSentMessageServiceTests {
   }
 
   @Test
-  func `frame 32 marks retrying then failed`() async throws {
+  func `SENT_STATUS marks retrying then failed`() async throws {
     let fixture = try await makeFixture()
     let store = fixture.container.dataStore
     let timestamp = UInt32(Date().timeIntervalSince1970) - 30
-    await fixture.transport.simulateReceive(frame30(text: "olá", timestamp: timestamp))
+    await fixture.transport.simulateReceive(sentDM(text: "olá", timestamp: timestamp))
     try await poll("stored") {
       await ((try? store.fetchMessages(contactID: fixture.contactID, limit: 10, offset: 0))?.count ?? 0) == 1
     }
     let id = try #require(try await store.fetchMessages(contactID: fixture.contactID, limit: 10, offset: 0).first?.id)
 
-    func frame32(status: UInt8, attempt: UInt8) -> Data {
-      Data([32]) + contactKey.prefix(6) + le32(timestamp) + Data([status, attempt]) + le32(0)
+    func sentStatus(status: UInt8, attempt: UInt8) -> Data {
+      Data([0xE1, 0x22]) + contactKey.prefix(6) + le32(timestamp) + Data([status, attempt]) + le32(0)
     }
-    await fixture.transport.simulateReceive(frame32(status: 2, attempt: 2))
+    await fixture.transport.simulateReceive(sentStatus(status: 2, attempt: 2))
     try await poll("retrying") { await (try? store.fetchMessage(id: id))?.status == .retrying }
     #expect(try await store.fetchMessage(id: id)?.retryAttempt == 2)
-    await fixture.transport.simulateReceive(frame32(status: 3, attempt: 3))
+    await fixture.transport.simulateReceive(sentStatus(status: 3, attempt: 3))
     try await poll("failed") { await (try? store.fetchMessage(id: id))?.status == .failed }
     await fixture.service.stop()
   }
 
   @Test
-  func `frame 31 is stored as an outgoing channel post`() async throws {
+  func `SENT_CHANNEL is stored as an outgoing channel post`() async throws {
     let fixture = try await makeFixture()
     let store = fixture.container.dataStore
     let timestamp = UInt32(Date().timeIntervalSince1970) - 2
-    let raw = Data([31, 0, 0, 0, 1, 0xFF, 0]) + le32(timestamp) + Data("bom dia".utf8)
+    let raw = Data([0xE1, 0x21, 0, 0, 0, 1, 0xFF, 0]) + le32(timestamp) + Data("bom dia".utf8)
     await fixture.transport.simulateReceive(raw)
     try await poll("stored") {
       await (try? store.findSentChannelMessage(
@@ -140,9 +141,37 @@ struct IsraSentMessageServiceTests {
   @Test
   func `a status for an unknown message is ignored`() async throws {
     let fixture = try await makeFixture()
-    let raw = Data([32]) + contactKey.prefix(6) + le32(42) + Data([1, 0]) + le32(10)
+    let raw = Data([0xE1, 0x22]) + contactKey.prefix(6) + le32(42) + Data([1, 0]) + le32(10)
     await fixture.transport.simulateReceive(raw)
     try await Task.sleep(for: .milliseconds(200))
+    #expect(try await fixture.container.dataStore.fetchMessages(contactID: fixture.contactID, limit: 10, offset: 0).isEmpty)
+    await fixture.service.stop()
+  }
+
+  @Test
+  func `frames are ignored unless HELLO negotiated SENT_MSGS`() async throws {
+    let fixture = try await makeFixture(negotiated: false)
+    let timestamp = UInt32(Date().timeIntervalSince1970) - 5
+    await fixture.transport.simulateReceive(sentDM(text: "OK", timestamp: timestamp))
+    await fixture.transport.simulateReceive(
+      Data([0xE1, 0x21, 0, 0, 0, 1, 0xFF, 0]) + le32(timestamp) + Data("bom dia".utf8)
+    )
+    try await Task.sleep(for: .milliseconds(300))
+    #expect(try await fixture.container.dataStore.fetchMessages(contactID: fixture.contactID, limit: 10, offset: 0).isEmpty)
+    #expect(try await fixture.container.dataStore.fetchMessages(
+      radioID: fixture.radioID, channelIndex: 1, limit: 10, offset: 0
+    ).isEmpty)
+    await fixture.service.stop()
+  }
+
+  @Test
+  func `raw frame 30 of revision 1 is not read`() async throws {
+    let fixture = try await makeFixture()
+    var raw = Data([30, 0, 0, 0]) + contactKey.prefix(6) + Data([0xFF, 0])
+    raw.append(le32(UInt32(Date().timeIntervalSince1970) - 5))
+    raw.append(Data("OK".utf8))
+    await fixture.transport.simulateReceive(raw)
+    try await Task.sleep(for: .milliseconds(300))
     #expect(try await fixture.container.dataStore.fetchMessages(contactID: fixture.contactID, limit: 10, offset: 0).isEmpty)
     await fixture.service.stop()
   }

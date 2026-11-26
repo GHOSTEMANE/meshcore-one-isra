@@ -2,20 +2,21 @@ import CryptoKit
 import Foundation
 import MeshCore
 
-/// Messages composed on the radio itself (isra/PROTOCOL.md section 3, frames 30 / 31 / 32).
+/// Messages composed on the radio itself (isra/PROTOCOL.md revision 2, section 3:
+/// 0xE1 / 0x20 SENT_DM, 0x21 SENT_CHANNEL, 0x22 SENT_STATUS).
 ///
-/// They reach the session as unknown-code frames during the message drain (the drain
-/// skips them and fetches the next one); this service stores them as **outgoing**
-/// messages in the right conversation, with no notification, no unread count and no
-/// last-heard update, and follows their delivery:
-/// - frame 30 (DM): status bytes, and the ACK codes derived for attempts 0-3, so a live
+/// They reach the session as replies to `CMD_SYNC_NEXT_MESSAGE` during the message drain
+/// (the drain skips them and fetches the next one); this service stores them as
+/// **outgoing** messages in the right conversation, with no notification, no unread
+/// count and no last-heard update, and follows their delivery:
+/// - SENT_DM: status bytes, and the ACK codes derived for attempts 0-3, so a live
 ///   `PUSH_CODE_SEND_CONFIRMED` (0x82) marks it delivered;
-/// - frame 31 (channel): stored with the same timestamp and body the radio put on air,
+/// - SENT_CHANNEL: stored with the same timestamp and body the radio put on air,
 ///   so heard repeats attach as for the app's own posts;
-/// - frame 32: delivered (with round trip), retrying or failed.
+/// - SENT_STATUS: delivered (with round trip), retrying or failed.
 ///
-/// Only firmware that got the SENT_MSGS cap in HELLO sends these frames; with stock
-/// firmware this service never sees one.
+/// Frames are processed only when a HELLO on this session negotiated SENT_MSGS
+/// (revision 2 or later); with stock firmware nothing is ever processed.
 actor IsraSentMessageService {
   /// Device-sent DMs carry attempts 0-3 (the radio's own resends, same timestamp).
   static let attemptCount: UInt8 = 4
@@ -30,13 +31,15 @@ actor IsraSentMessageService {
   private let heardRepeatsService: HeardRepeatsService
   private let receiveLifetime: ReceiveScope.Lifetime
   private let radioID: UUID
+  /// True once the session's HELLO negotiated SENT_MSGS.
+  private let isNegotiated: @Sendable () async -> Bool
   private let logger = PersistentLogger(subsystem: "com.mc1", category: "IsraSentMessages")
 
   private var task: Task<Void, Never>?
   private var subscriptionID: UUID?
   /// Expected ACK code -> message (live 0x82).
   private var ackCodes: [Data: UUID] = [:]
-  /// Recipient prefix + timestamp -> message (frame 32).
+  /// Recipient prefix + timestamp -> message (SENT_STATUS).
   private var messagesByKey: [String: UUID] = [:]
 
   init(
@@ -47,7 +50,8 @@ actor IsraSentMessageService {
     rxLogService: RxLogService,
     heardRepeatsService: HeardRepeatsService,
     receiveLifetime: ReceiveScope.Lifetime,
-    radioID: UUID
+    radioID: UUID,
+    isNegotiated: (@Sendable () async -> Bool)? = nil
   ) {
     self.session = session
     self.dataStore = dataStore
@@ -57,6 +61,7 @@ actor IsraSentMessageService {
     self.heardRepeatsService = heardRepeatsService
     self.receiveLifetime = receiveLifetime
     self.radioID = radioID
+    self.isNegotiated = isNegotiated ?? { [session] in await session.israSentMessagesActive }
   }
 
   // MARK: - Lifecycle
@@ -99,6 +104,10 @@ actor IsraSentMessageService {
       await handleAcknowledgement(code: code, tripTime: tripTime)
       return
     }
+    guard await isNegotiated() else {
+      logger.warning("isra: device-sent message frame without SENT_MSGS negotiated, ignored")
+      return
+    }
     switch IsraProtocol.frame(from: event) {
     case let .sentContactMessage(message)?:
       await storeDirectMessage(message)
@@ -111,7 +120,7 @@ actor IsraSentMessageService {
     }
   }
 
-  // MARK: - Frame 30
+  // MARK: - SENT_DM
 
   private func storeDirectMessage(_ frame: IsraProtocol.SentContactMessage) async {
     do {
@@ -171,7 +180,7 @@ actor IsraSentMessageService {
     }
   }
 
-  // MARK: - Frame 31
+  // MARK: - SENT_CHANNEL
 
   private func storeChannelMessage(_ frame: IsraProtocol.SentChannelMessage) async {
     do {
@@ -224,7 +233,7 @@ actor IsraSentMessageService {
     }
   }
 
-  // MARK: - Frame 32 and live ACK
+  // MARK: - SENT_STATUS and live ACK
 
   private func applyStatusFrame(_ frame: IsraProtocol.SentMessageStatus) async {
     let key = Self.messageKey(prefix: frame.recipientPrefix, timestamp: frame.timestamp)
@@ -232,7 +241,7 @@ actor IsraSentMessageService {
     if messageID == nil {
       messageID = await findStoredDirectMessage(prefix: frame.recipientPrefix, timestamp: frame.timestamp)
     }
-    guard let messageID else { return } // a 32 for an unknown message is ignored
+    guard let messageID else { return } // a SENT_STATUS for an unknown message is ignored
     messagesByKey[key] = messageID
     var ackCode: Data?
     if frame.status == .delivered, let message = try? await dataStore.fetchMessage(id: messageID),

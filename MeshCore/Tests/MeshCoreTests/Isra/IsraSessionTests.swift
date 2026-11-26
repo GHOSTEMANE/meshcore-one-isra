@@ -28,15 +28,16 @@ struct IsraSessionTests {
     await transport.simulateReceive(makeSelfInfoPacket(key: helloKey))
     try await waitUntil("hello") { await transport.sentData.count == 2 }
     #expect(await transport.sentData[1] == IsraProtocol.hello(hostCaps: [.sentMessages, .phonePosition]))
-    await transport.simulateReceive(Data([0xE1, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x03]))
+    await transport.simulateReceive(Data([0xE1, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x03]))
     try await startTask.value
 
     let hello = await session.israHello
     #expect(hello == .supported(
-      IsraProtocol.HelloReply(caps: .sentMessages, revision: 1, state: [.phonePositionSetting, .gpsOn]),
+      IsraProtocol.HelloReply(caps: .sentMessages, revision: 2, state: [.phonePositionSetting, .gpsOn]),
       hostCaps: [.sentMessages, .phonePosition]
     ))
     #expect(hello.activeCaps == .sentMessages)
+    #expect(await session.israSentMessagesActive)
 
     // A later APP_START (settings refresh) does not repeat HELLO: BLE keeps the caps.
     let refresh = Task { try await session.sendAppStart() }
@@ -48,7 +49,7 @@ struct IsraSessionTests {
     // On demand it is sent again.
     let resend = Task { try await session.israResendHello() }
     try await waitUntil("resent hello") { await transport.sentData.count == 4 }
-    await transport.simulateReceive(Data([0xE1, 0x00, 0x03, 0x00, 0x00, 0x00, 0x01, 0x07]))
+    await transport.simulateReceive(Data([0xE1, 0x00, 0x03, 0x00, 0x00, 0x00, 0x02, 0x07]))
     #expect(try await resend.value.activeCaps == [.sentMessages, .phonePosition])
     await session.stop()
   }
@@ -68,10 +69,33 @@ struct IsraSessionTests {
     await transport.simulateReceive(Data([ResponseCode.error.rawValue, ErrorCode.unsupportedCommand.rawValue]))
     try await startTask.value
     #expect(await session.israHello == .unsupported)
+    #expect(!(await session.israSentMessagesActive))
 
     let state = try await session.israResendHello()
     #expect(state == .unsupported)
     #expect(await transport.sentData.count == 2)
+    await session.stop()
+  }
+
+  @Test
+  func `revision 1 firmware is asked again without SENT_MSGS`() async throws {
+    installTestProvider()
+    let transport = MockTransport()
+    let session = MeshCoreSession(
+      transport: transport,
+      configuration: SessionConfiguration(defaultTimeout: 10, clientIdentifier: "MCTst")
+    )
+    let startTask = Task { try await session.start() }
+    try await waitUntil("appStart") { await transport.sentData.count == 1 }
+    await transport.simulateReceive(makeSelfInfoPacket(key: helloKey))
+    try await waitUntil("hello") { await transport.sentData.count == 2 }
+    await transport.simulateReceive(Data([0xE1, 0x00, 0x03, 0x00, 0x00, 0x00, 0x01, 0x00]))
+    try await waitUntil("second hello") { await transport.sentData.count == 3 }
+    #expect(await transport.sentData[2] == IsraProtocol.hello(hostCaps: .phonePosition))
+    await transport.simulateReceive(Data([0xE1, 0x00, 0x03, 0x00, 0x00, 0x00, 0x01, 0x00]))
+    try await startTask.value
+    #expect(await session.israHello.activeCaps == .phonePosition)
+    #expect(!(await session.israSentMessagesActive))
     await session.stop()
   }
 
