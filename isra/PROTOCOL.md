@@ -29,7 +29,7 @@ Host -> firmware:
 [0] 0xE1
 [1] 0x00
 [2..5] host caps (u32)
-         bit 0  SENT_MSGS   the host understands frames 30/31/32 (section 3)
+         bit 0  SENT_MSGS   the host understands SENT_DM / SENT_CHANNEL / SENT_STATUS (section 3)
          bit 1  PHONE_POS   the host answers position requests (section 2)
          others 0
 ```
