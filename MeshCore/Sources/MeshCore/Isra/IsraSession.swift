@@ -17,14 +17,29 @@ public enum IsraHooks {
     provider.withLock { $0 = newValue }
   }
 
-  /// True once the app installed a provider.
+  /// Tests: a provider seen only by the task tree of `withScopedProvider`, so a test
+  /// never leaves process-wide state behind for other suites.
+  @TaskLocal static var scopedProvider: HostCapsProvider?
+
+  /// True once the app installed a provider (or a test scoped one).
   public static var isInstalled: Bool {
-    provider.withLock { $0 != nil }
+    currentProvider() != nil
   }
 
   static func hostCaps(for devicePublicKey: Data) -> IsraProtocol.Caps? {
-    let current = provider.withLock { $0 }
-    return current?(devicePublicKey)
+    currentProvider()?(devicePublicKey)
+  }
+
+  private static func currentProvider() -> HostCapsProvider? {
+    scopedProvider ?? provider.withLock { $0 }
+  }
+
+  /// Tests: runs `operation` with `scoped` installed for its task tree only.
+  static func withScopedProvider<R>(
+    _ scoped: @escaping HostCapsProvider,
+    operation: () async throws -> R
+  ) async rethrows -> R {
+    try await $scopedProvider.withValue(scoped, operation: operation)
   }
 }
 

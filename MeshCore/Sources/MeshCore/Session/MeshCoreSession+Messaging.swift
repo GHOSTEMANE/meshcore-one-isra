@@ -278,8 +278,9 @@ public extension MeshCoreSession {
   }
 
   private func performGetMessage(timeout: TimeInterval? = nil) async throws -> MessageResult {
-    // isra: a device-sent message frame (0xE1 / 0x20-0x22, read by event subscribers) or another
-    // reply with an unknown frame code is skipped and the next message fetched, instead of timing out.
+    // isra: once the app installed IsraHooks, a device-sent message frame (0xE1 / 0x20-0x22, read by
+    // event subscribers) or another reply with an unknown frame code is skipped and the next message
+    // fetched, instead of timing out. Without the hooks (upstream builds) nothing changes.
     for _ in 0..<64 {
       if let result = try await performGetMessageOnce(timeout: timeout) { return result }
     }
@@ -301,7 +302,7 @@ public extension MeshCoreSession {
              .noMoreMessages, .error:
           true
         case let .parseFailure(data, reason): // isra
-          IsraProtocol.isDrainSkipFrame(data: data, reason: reason)
+          IsraHooks.isInstalled && IsraProtocol.isDrainSkipFrame(data: data, reason: reason)
         default:
           false
         }

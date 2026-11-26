@@ -6,6 +6,32 @@ import Testing
 struct IsraDrainTests {
   @Test
   func `drain skips a device-sent message frame and fetches the next message`() async throws {
+    // The skip is active only once the app installed IsraHooks (scoped to this test).
+    try await IsraHooks.withScopedProvider({ _ in nil }) {
+      try await drainSkipsSentFrame()
+    }
+  }
+
+  @Test
+  func `without the hooks the drain is upstream's`() async throws {
+    let transport = MockTransport()
+    let session = MeshCoreSession(
+      transport: transport,
+      configuration: SessionConfiguration(defaultTimeout: 0.3, clientIdentifier: "MCTst")
+    )
+    try await drainStartSession(session, transport: transport, key: Data(repeating: 0x05, count: 32))
+    let base = await transport.sentData.count
+    let task = Task { try await session.getMessage() }
+    try await waitUntil("SYNC") { await transport.sentData.count == base + 1 }
+    var sentDM = Data([0xE1, 0x20, 0, 0, 0, 1, 2, 3, 4, 5, 6, 0xFF, 0, 1, 0, 0, 0])
+    sentDM.append(Data("hi".utf8))
+    await transport.simulateReceive(sentDM)
+    await #expect(throws: MeshCoreError.self) { try await task.value }
+    #expect(await transport.sentData.count == base + 1)
+    await session.stop()
+  }
+
+  private func drainSkipsSentFrame() async throws {
     let transport = MockTransport()
     let session = MeshCoreSession(
       transport: transport,
