@@ -34,8 +34,11 @@ public enum IsraHelloState: Sendable, Equatable {
   case notSent
   /// Stock firmware (`ERR_CODE_UNSUPPORTED_CMD`): every isra feature stays off.
   case unsupported
-  /// Another error or no reply.
+  /// Another error or no reply; sent again with the next APP_START.
   case failed
+  /// No reply to two HELLOs on a session that never got one: treated as firmware
+  /// without the extensions for the rest of the session (no more 3 s waits).
+  case gaveUp
   case supported(IsraProtocol.HelloReply, hostCaps: IsraProtocol.Caps)
 
   /// Caps in effect on the link: host & firmware. SENT_MSGS needs revision 2 or later
@@ -51,6 +54,13 @@ public enum IsraHelloState: Sendable, Equatable {
 /// Per-session isra state, kept by `MeshCoreSession`.
 struct IsraSessionState: Sendable {
   var hello: IsraHelloState = .notSent
+  /// HELLOs that timed out on this session.
+  var helloTimeouts = 0
+  /// A HELLO on this session got a supported reply.
+  var everSupported = false
+  /// BLE keeps the host caps until the link drops; other links (USB, TCP) clear them on
+  /// every APP_START, so HELLO must follow each one. Set by the connection owner.
+  var linkKeepsCaps = true
   /// Set once a HELLO on this session negotiated SENT_MSGS. Never cleared during the
   /// session: on BLE the firmware keeps the cap until the link drops, even if a later
   /// HELLO goes unanswered.
@@ -63,6 +73,19 @@ public extension MeshCoreSession {
     isra.hello
   }
 
+  /// Tells the session whether its link keeps the host caps across APP_START (BLE) or
+  /// clears them (USB, TCP): then HELLO follows every APP_START. Only consulted once the
+  /// app installed ``IsraHooks``.
+  func israSetLinkKeepsCaps(_ keeps: Bool) {
+    isra.linkKeepsCaps = keeps
+  }
+
+  /// Marks the last HELLO as not in effect (it could not be sent), so the next
+  /// APP_START sends it again. No-op when the firmware is unsupported or given up.
+  func israInvalidateHello() {
+    if case .supported = isra.hello { isra.hello = .failed }
+  }
+
   /// Whether the device-sent message frames (0xE1 / 0x20-0x22) may be processed:
   /// a HELLO on this session negotiated SENT_MSGS. Never true with stock firmware.
   var israSentMessagesActive: Bool {
@@ -70,7 +93,8 @@ public extension MeshCoreSession {
   }
 
   /// Sends HELLO again (for example after the user changed a host cap).
-  /// Returns the new state; `.unsupported` is final for the session.
+  /// Returns the new state; `.unsupported` and `.gaveUp` are final for the session.
+  /// A HELLO that fails leaves the state `.failed`, so the next APP_START retries it.
   @discardableResult
   func israResendHello() async throws -> IsraHelloState {
     guard let key = selfInfo?.publicKey else { return isra.hello }
@@ -103,13 +127,16 @@ extension MeshCoreSession {
   /// HELLO must not wait as long as ordinary commands: it runs inside the connection's
   /// APP_START, which the connection manager bounds to 10 s.
   static let israHelloTimeout: TimeInterval = 3
+  /// Unanswered HELLOs before a session that never got a reply gives up.
+  static let israHelloMaxTimeouts = 2
 
   /// APP_START then HELLO in one serialized slot, so no SYNC_NEXT_MESSAGE can slip in between.
   ///
   /// Over BLE the firmware keeps the host caps until the link drops (a later APP_START,
   /// sent after many settings writes, does not clear them), and a session lives for one
   /// link. So HELLO goes only with the session's first APP_START, or again after a HELLO
-  /// that got no answer; ``israResendHello()`` sends it on demand.
+  /// that got no answer; ``israResendHello()`` sends it on demand. On other links the
+  /// firmware clears the caps on every APP_START, so HELLO follows each one.
   func israSendAppStartAndHello(_ appStart: Data) async throws -> SelfInfo {
     try await requestResponseSerializer.withSerialization { [self] in
       let info: SelfInfo = try await sendAndMatchHoldingSerialization(appStart) { event in
@@ -124,13 +151,17 @@ extension MeshCoreSession {
   }
 
   var israNeedsHello: Bool {
-    isra.hello == .notSent || isra.hello == .failed
+    switch isra.hello {
+    case .notSent, .failed: true
+    case .supported: !isra.linkKeepsCaps
+    case .unsupported, .gaveUp: false
+    }
   }
 
   /// The caller holds `requestResponseSerializer`. Never throws: a failed HELLO only
   /// leaves the isra features off.
   func israHelloHoldingSerialization(devicePublicKey: Data) async {
-    guard isra.hello != .unsupported,
+    guard isra.hello != .unsupported, isra.hello != .gaveUp,
           var caps = IsraHooks.hostCaps(for: devicePublicKey) else { return }
     var state = await israExchangeHello(caps)
     // A revision 1 firmware would send device-sent messages as raw frames 30 / 31 / 32,
@@ -141,12 +172,19 @@ extension MeshCoreSession {
       caps.remove(.sentMessages)
       state = await israExchangeHello(caps)
     }
-    guard let state else { return }
+    guard var state else { return }
+    if case .supported = state {
+      isra.everSupported = true
+      isra.helloTimeouts = 0
+    } else if state == .failed, !isra.everSupported, isra.helloTimeouts >= Self.israHelloMaxTimeouts {
+      logger.info("isra HELLO: no reply \(self.isra.helloTimeouts) times, extensions off for this session")
+      state = .gaveUp
+    }
     isra.hello = state
     if state.activeCaps.contains(.sentMessages) { isra.sentMessagesNegotiated = true }
   }
 
-  /// One HELLO round trip. nil on cancellation.
+  /// One HELLO round trip. nil on cancellation; a timeout counts in `helloTimeouts`.
   private func israExchangeHello(_ caps: IsraProtocol.Caps) async -> IsraHelloState? {
     do {
       return try await sendAndMatchHoldingSerialization(
@@ -167,6 +205,10 @@ extension MeshCoreSession {
       }
     } catch is CancellationError {
       return nil
+    } catch MeshCoreError.timeout {
+      isra.helloTimeouts += 1
+      logger.warning("isra HELLO: no reply")
+      return .failed
     } catch {
       logger.warning("isra HELLO failed: \(error.localizedDescription)")
       return .failed

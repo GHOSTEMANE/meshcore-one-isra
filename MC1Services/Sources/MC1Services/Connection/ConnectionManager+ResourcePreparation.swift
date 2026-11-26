@@ -32,6 +32,7 @@ extension ConnectionManager {
       preconditionFailure("Simulator has its own synthetic preparation")
     }
     let newSession = makeBoundSession(transport: view, scope: request.radioCLICorrelationScope)
+    await newSession.israSetLinkKeepsCaps(attempt.target.transportType == .bluetooth) // isra: HELLO after every APP_START off BLE
     let resource = ConnectionResource(
       binding: binding, transport: physical, session: newSession, wifi: wifi,
       ble: attempt.target.transportType == .bluetooth ? transport : nil

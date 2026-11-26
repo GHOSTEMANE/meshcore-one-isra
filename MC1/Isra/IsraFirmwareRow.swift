@@ -20,7 +20,7 @@ struct IsraFirmwareRow: View {
       IsraL10n.tr("Isra.Core.firmware.supported", String(reply.caps.rawValue, radix: 16), Int(reply.revision))
     case .unsupported:
       IsraL10n.tr("Isra.Core.firmware.unsupported")
-    case .failed:
+    case .failed, .gaveUp:
       IsraL10n.tr("Isra.Core.firmware.noReply")
     case .notSent:
       IsraL10n.tr("Isra.Core.firmware.unknown")

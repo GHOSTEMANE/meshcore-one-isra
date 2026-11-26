@@ -100,6 +100,94 @@ struct IsraSessionTests {
   }
 
   @Test
+  func `off BLE hello follows every app start`() async throws {
+    installTestProvider()
+    let transport = MockTransport()
+    let session = MeshCoreSession(
+      transport: transport,
+      configuration: SessionConfiguration(defaultTimeout: 10, clientIdentifier: "MCTst")
+    )
+    await session.israSetLinkKeepsCaps(false)
+    let startTask = Task { try await session.start() }
+    try await waitUntil("appStart") { await transport.sentData.count == 1 }
+    await transport.simulateReceive(makeSelfInfoPacket(key: helloKey))
+    try await waitUntil("hello") { await transport.sentData.count == 2 }
+    await transport.simulateReceive(Data([0xE1, 0x00, 0x03, 0x00, 0x00, 0x00, 0x02, 0x07]))
+    try await startTask.value
+
+    let refresh = Task { try await session.sendAppStart() }
+    try await waitUntil("second appStart") { await transport.sentData.count == 3 }
+    await transport.simulateReceive(makeSelfInfoPacket(key: helloKey))
+    try await waitUntil("hello again") { await transport.sentData.count == 4 }
+    #expect(await transport.sentData[3] == IsraProtocol.hello(hostCaps: [.sentMessages, .phonePosition]))
+    await transport.simulateReceive(Data([0xE1, 0x00, 0x03, 0x00, 0x00, 0x00, 0x02, 0x07]))
+    _ = try await refresh.value
+    #expect(await session.israHello.activeCaps == [.sentMessages, .phonePosition])
+    await session.stop()
+  }
+
+  @Test
+  func `two unanswered hellos give up for the session`() async throws {
+    installTestProvider()
+    let transport = MockTransport()
+    let session = MeshCoreSession(
+      transport: transport,
+      configuration: SessionConfiguration(defaultTimeout: 0.3, clientIdentifier: "MCTst")
+    )
+    let startTask = Task { try await session.start() }
+    try await waitUntil("appStart") { await transport.sentData.count == 1 }
+    await transport.simulateReceive(makeSelfInfoPacket(key: helloKey))
+    try await waitUntil("hello") { await transport.sentData.count == 2 }
+    try await startTask.value
+    #expect(await session.israHello == .failed)
+
+    let second = Task { try await session.sendAppStart() }
+    try await waitUntil("second appStart") { await transport.sentData.count == 3 }
+    await transport.simulateReceive(makeSelfInfoPacket(key: helloKey))
+    try await waitUntil("second hello") { await transport.sentData.count == 4 }
+    _ = try await second.value
+    #expect(await session.israHello == .gaveUp)
+
+    let third = Task { try await session.sendAppStart() }
+    try await waitUntil("third appStart") { await transport.sentData.count == 5 }
+    await transport.simulateReceive(makeSelfInfoPacket(key: helloKey))
+    _ = try await third.value
+    #expect(try await session.israResendHello() == .gaveUp)
+    #expect(await transport.sentData.count == 5)
+    await session.stop()
+  }
+
+  @Test
+  func `an invalidated hello is sent with the next app start`() async throws {
+    installTestProvider()
+    let transport = MockTransport()
+    let session = MeshCoreSession(
+      transport: transport,
+      configuration: SessionConfiguration(defaultTimeout: 10, clientIdentifier: "MCTst")
+    )
+    let startTask = Task { try await session.start() }
+    try await waitUntil("appStart") { await transport.sentData.count == 1 }
+    await transport.simulateReceive(makeSelfInfoPacket(key: helloKey))
+    try await waitUntil("hello") { await transport.sentData.count == 2 }
+    await transport.simulateReceive(Data([0xE1, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00]))
+    try await startTask.value
+
+    await session.israInvalidateHello()
+    #expect(await session.israHello == .failed)
+    // SENT_MSGS stays negotiated: on BLE the firmware keeps the cap.
+    #expect(await session.israSentMessagesActive)
+
+    let refresh = Task { try await session.sendAppStart() }
+    try await waitUntil("second appStart") { await transport.sentData.count == 3 }
+    await transport.simulateReceive(makeSelfInfoPacket(key: helloKey))
+    try await waitUntil("hello again") { await transport.sentData.count == 4 }
+    await transport.simulateReceive(Data([0xE1, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00]))
+    _ = try await refresh.value
+    #expect(await session.israHello.activeCaps == .sentMessages)
+    await session.stop()
+  }
+
+  @Test
   func `other devices get no hello`() async throws {
     installTestProvider()
     let transport = MockTransport()

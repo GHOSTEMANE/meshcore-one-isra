@@ -75,16 +75,21 @@ final class IsraCenter {
   }
 
   /// Sends HELLO again (new host caps, or to refresh the device state flags).
+  /// If it fails, the session keeps it pending (`.failed`) and sends it with the next
+  /// APP_START; a new connection sends it anyway.
   func resendHello() async {
     guard let session else { return }
+    let state: IsraHelloState
     do {
-      let state = try await session.israResendHello()
-      guard self.session === session else { return }
-      hello = state
-      updatePhonePosBinding(sendNow: false)
+      state = try await session.israResendHello()
     } catch {
-      // Cancellation or a dropped link: the next connection sends HELLO anyway.
+      // Not sent (cancelled, link busy or dropping): retry with the next APP_START.
+      await session.israInvalidateHello()
+      state = await session.israHello
     }
+    guard self.session === session else { return }
+    hello = state
+    updatePhonePosBinding(sendNow: false)
   }
 
   // MARK: - Phone position

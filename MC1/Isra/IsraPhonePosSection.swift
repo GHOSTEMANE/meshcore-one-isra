@@ -122,7 +122,7 @@ struct IsraPhonePosSection: View {
       reply.caps.contains(.phonePosition) ? tr("firmware.yes") : tr("firmware.noFeature")
     case .unsupported:
       tr("firmware.stock")
-    case .failed, .notSent:
+    case .failed, .notSent, .gaveUp:
       tr("firmware.unknown")
     }
   }
