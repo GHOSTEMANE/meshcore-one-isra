@@ -1,1 +1,8 @@
 /* isra fork strings. Keys: Isra.<Area>.<name> */
+
+/* Core: isra firmware protocol (HELLO) */
+"Isra.Core.firmware.title" = "isra firmware";
+"Isra.Core.firmware.supported" = "caps 0x%@, revision %ld";
+"Isra.Core.firmware.unsupported" = "no (stock firmware)";
+"Isra.Core.firmware.noReply" = "no reply";
+"Isra.Core.firmware.unknown" = "—";

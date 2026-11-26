@@ -591,6 +591,9 @@ final class AppState {
 
   /// Initialize on app launch
   func initialize() async {
+    #if ISRA
+      IsraCenter.installHooks() // isra: HELLO after every APP_START (MC1/Isra/IsraCenter.swift)
+    #endif
     // Decide What's New before activate() can drive any connection alert. The
     // value of `hasCompletedOnboarding` read here is the "was onboarded at
     // launch" signal that distinguishes a brand-new install from an upgrader.
@@ -621,6 +624,9 @@ final class AppState {
   /// Cancels event tasks; the coordinator registry stays so an open chat
   /// keeps its timeline.
   func tearDownAppStateSessionState() {
+    #if ISRA
+      IsraCenter.shared.connectionLost() // isra
+    #endif
     connectionWiringJob?.cancel()
     connectionWiringJob = nil
     wiredConnectionGeneration = nil
@@ -835,6 +841,9 @@ final class AppState {
     guard !Task.isCancelled, context.isCurrent(connectionManager) else { return }
     configureNotificationHandlers()
     batteryMonitor.start(services: services, device: snapshot.device)
+    #if ISRA
+      await IsraCenter.shared.connectionReady(snapshot) // isra
+    #endif
   }
 
   // MARK: - Stale Node Cleanup

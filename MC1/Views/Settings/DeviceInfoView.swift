@@ -154,6 +154,9 @@ struct DeviceInfoView: View {
             )
             .foregroundStyle(.secondary)
           }
+          #if ISRA
+            IsraFirmwareRow() // isra: caps and revision from the 0xE1 HELLO
+          #endif
         } header: {
           Text(L10n.Settings.DeviceInfo.Firmware.header)
         }

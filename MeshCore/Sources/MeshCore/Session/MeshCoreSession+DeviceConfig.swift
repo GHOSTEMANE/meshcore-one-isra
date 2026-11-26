@@ -11,6 +11,8 @@ public extension MeshCoreSession {
   /// - Throws: ``MeshCoreError/timeout`` if the device doesn't emit `selfInfo`.
   func sendAppStart() async throws -> SelfInfo {
     let data = PacketBuilder.appStart(clientId: configuration.clientIdentifier)
+    // isra: HELLO follows APP_START in the same serialized slot once the app installed host caps
+    if IsraHooks.isInstalled { return try await israSendAppStartAndHello(data) }
     return try await sendAndWait(data) { event in
       if case let .selfInfo(info) = event { return info }
       return nil
