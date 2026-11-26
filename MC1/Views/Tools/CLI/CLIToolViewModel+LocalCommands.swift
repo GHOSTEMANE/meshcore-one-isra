@@ -189,7 +189,11 @@ extension CLIToolViewModel {
   private func runSetMultiAcks(_ value: UInt8) async {
     guard let settingsService else { return notConnected() }
     do {
-      try await settingsService.setOtherParamsVerified(multiAcks: value)
+      #if ISRA // isra: the other fields of the record are re-read first, never stale
+        try await IsraRadioWrites.otherParams(settingsService, multiAcks: value)
+      #else
+        try await settingsService.setOtherParamsVerified(multiAcks: value)
+      #endif
       output(LocalCommandOutput.ok)
     } catch { renderError(error) }
   }

@@ -4,17 +4,19 @@ import SwiftUI
 
 private let logger = Logger(subsystem: "com.mc1", category: "IsraLocationSettings")
 
-/// isra: replaces LocationSettingsSection (a copy of upstream v1.7.1 with this change):
-/// the app never switches the radio's GPS off. Choosing the phone as source and
-/// turning auto-update off leave the GPS as it is; only the device GPS toggle (an
-/// explicit choice) switches it.
+/// isra: replaces LocationSettingsSection (a copy of upstream v1.7.1 with these changes):
+/// - The advert location policy is shown read-only, as the radio reports it. The
+///   "share location publicly" toggle is gone and nothing here writes the policy:
+///   it is changed on the device only (Settings › All settings › Privacy › Advert pos).
+/// - The app never switches the radio's GPS off: choosing the phone as source and
+///   turning auto-update off leave the GPS as it is. Only the device GPS toggle
+///   (an explicit choice) switches it.
 struct IsraLocationSettingsSection: View {
   @Environment(\.appState) private var appState
   @Environment(\.appTheme) private var theme
   @Environment(\.dismiss) private var dismiss
   @Environment(\.openURL) private var openURL
   @Binding var showingLocationPicker: Bool
-  @State private var shareLocation = false
   @State private var autoUpdateLocation = false
   @State private var gpsSource: GPSSource = .phone
   @State private var deviceHasGPS = false
@@ -23,12 +25,16 @@ struct IsraLocationSettingsSection: View {
   @State private var showLocationDeniedAlert = false
   @State private var retryAlert = RetryAlertState()
   @State private var isSaving = false
-  @State private var didLoad = false
 
   private let devicePreferenceStore = DevicePreferenceStore()
 
   private var shouldPollDeviceGPS: Bool {
     autoUpdateLocation && gpsSource == .device && deviceGPSEnabled
+  }
+
+  /// The radio's advert location policy byte, as last read from SELF_INFO.
+  private var advertPolicy: UInt8 {
+    appState.connectedDevice?.advertLocationPolicy ?? 0
   }
 
   var body: some View {
@@ -56,14 +62,18 @@ struct IsraLocationSettingsSection: View {
         .foregroundStyle(.primary)
         .radioDisabled(for: appState.connectionState, or: isSaving || autoUpdateLocation)
 
-        Toggle(isOn: $shareLocation) {
-          TintedLabel(L10n.Settings.Node.shareLocationPublicly, systemImage: "location")
+        LabeledContent {
+          Text(IsraL10n.tr(advertPolicy == 0 ? "Isra.UI.Location.advertPos.off" : "Isra.UI.Location.advertPos.on"))
+            .foregroundStyle(advertPolicy == 0 ? Color.secondary : Color.orange)
+        } label: {
+          TintedLabel(IsraL10n.tr("Isra.UI.Location.advertPos"), systemImage: "location")
         }
-        .onChange(of: shareLocation) { _, newValue in
-          guard didLoad else { return }
-          updateShareLocation(newValue)
+
+        if advertPolicy != 0 {
+          Label(IsraL10n.tr("Isra.UI.Location.advertPos.warning"), systemImage: "exclamationmark.triangle.fill")
+            .font(.callout)
+            .foregroundStyle(.orange)
         }
-        .radioDisabled(for: appState.connectionState, or: isSaving)
 
         Toggle(isOn: $autoUpdateLocation) {
           TintedLabel(L10n.Settings.Location.autoUpdate, systemImage: "location.circle")
@@ -93,7 +103,7 @@ struct IsraLocationSettingsSection: View {
       } header: {
         Text(L10n.Settings.Location.header)
       } footer: {
-        Text(L10n.Settings.Location.footer)
+        Text(IsraL10n.tr("Isra.UI.Location.footer"))
       }
       .themedRowBackground(theme)
 
@@ -158,11 +168,9 @@ struct IsraLocationSettingsSection: View {
 
   private func loadPreferences() {
     if let device = appState.connectedDevice {
-      shareLocation = device.sharesLocationPublicly
       autoUpdateLocation = devicePreferenceStore.isAutoUpdateLocationEnabled(deviceID: device.id)
       gpsSource = devicePreferenceStore.gpsSource(deviceID: device.id)
     }
-    didLoad = true
   }
 
   private func loadDeviceGPSState() async {
@@ -186,6 +194,7 @@ struct IsraLocationSettingsSection: View {
     }
   }
 
+  /// isra: turning auto-update off no longer switches the radio's GPS off.
   private func handleAutoUpdateChange(_ newValue: Bool) {
     guard let deviceID = appState.connectedDevice?.id else { return }
     if newValue, gpsSource == .phone, appState.locationService.isLocationDenied {
@@ -197,7 +206,6 @@ struct IsraLocationSettingsSection: View {
     if newValue, gpsSource == .phone {
       appState.locationService.requestPermissionIfNeeded()
     }
-    // isra: turning auto-update off no longer switches the radio's GPS off.
     if gpsSource == .device, newValue, !deviceGPSEnabled {
       saveDeviceGPS(
         true,
@@ -207,11 +215,9 @@ struct IsraLocationSettingsSection: View {
         }
       )
     }
-    if shareLocation {
-      updateShareLocation(shareLocation)
-    }
   }
 
+  /// isra: choosing the phone as source no longer switches the radio's GPS off.
   private func handleGPSSourceChange(from oldValue: GPSSource, to newValue: GPSSource) {
     guard let deviceID = appState.connectedDevice?.id else { return }
     if newValue == .phone, appState.locationService.isLocationDenied {
@@ -222,7 +228,6 @@ struct IsraLocationSettingsSection: View {
 
     devicePreferenceStore.setGPSSource(newValue, deviceID: deviceID)
     if newValue == .phone {
-      // isra: the phone as source no longer switches the radio's GPS off.
       appState.locationService.requestPermissionIfNeeded()
     } else if autoUpdateLocation, !deviceGPSEnabled {
       saveDeviceGPS(
@@ -233,12 +238,9 @@ struct IsraLocationSettingsSection: View {
         }
       )
     }
-
-    if shareLocation {
-      updateShareLocation(shareLocation)
-    }
   }
 
+  /// The explicit device GPS toggle. isra: no advert policy write after it.
   private func updateDeviceGPSToggle(_ enabled: Bool) {
     guard let deviceID = appState.connectedDevice?.id else { return }
     let shouldDisableAutoUpdate = !enabled && autoUpdateLocation && gpsSource == .device
@@ -246,46 +248,8 @@ struct IsraLocationSettingsSection: View {
       if shouldDisableAutoUpdate {
         autoUpdateLocation = false
         devicePreferenceStore.setAutoUpdateLocationEnabled(false, deviceID: deviceID)
-        try await applyDeviceGPSDisabledSharePolicyIfNeeded()
       }
     }
-  }
-
-  private func updateShareLocation(_ share: Bool) {
-    guard let device = appState.connectedDevice,
-          let settingsService = appState.services?.settingsService else { return }
-    let policy = selectedAdvertLocationPolicy(share: share)
-
-    if device.advertLocationPolicyMode == policy {
-      return
-    }
-
-    isSaving = true
-    Task {
-      do {
-        try await applyShareLocationPolicy(policy, settingsService: settingsService)
-        retryAlert.reset()
-      } catch let error as SettingsServiceError where error.isRetryable {
-        shareLocation = !share
-        retryAlert.show(
-          message: error.userFacingMessage,
-          onRetry: { updateShareLocation(share) },
-          onMaxRetriesExceeded: { dismiss() }
-        )
-      } catch {
-        shareLocation = !share
-        errorMessage = error.userFacingMessage
-      }
-      isSaving = false
-    }
-  }
-
-  private func selectedAdvertLocationPolicy(share: Bool) -> AdvertLocationPolicy {
-    guard share else { return .none }
-    if autoUpdateLocation, deviceHasGPS, gpsSource == .device {
-      return .share
-    }
-    return .prefs
   }
 
   private func saveDeviceGPS(
@@ -322,21 +286,5 @@ struct IsraLocationSettingsSection: View {
       }
       isSaving = false
     }
-  }
-
-  private func applyDeviceGPSDisabledSharePolicyIfNeeded() async throws {
-    guard shareLocation,
-          let device = appState.connectedDevice,
-          device.advertLocationPolicyMode == .share,
-          let settingsService = appState.services?.settingsService else { return }
-
-    try await applyShareLocationPolicy(.prefs, settingsService: settingsService)
-  }
-
-  private func applyShareLocationPolicy(
-    _ policy: AdvertLocationPolicy,
-    settingsService: SettingsService
-  ) async throws {
-    try await settingsService.setOtherParamsVerified(advertLocationPolicy: policy)
   }
 }

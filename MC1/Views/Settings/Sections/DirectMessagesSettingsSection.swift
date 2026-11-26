@@ -109,7 +109,11 @@ struct DirectMessagesSettingsSection: View {
     isSaving = true
     Task {
       do {
-        try await settingsService.setOtherParamsVerified(multiAcks: value)
+        #if ISRA // isra: the other fields of the record are re-read first, never stale
+          try await IsraRadioWrites.otherParams(settingsService, multiAcks: value)
+        #else
+          try await settingsService.setOtherParamsVerified(multiAcks: value)
+        #endif
         retryAlert.reset()
       } catch let error as SettingsServiceError where error.isRetryable {
         retryAlert.show(

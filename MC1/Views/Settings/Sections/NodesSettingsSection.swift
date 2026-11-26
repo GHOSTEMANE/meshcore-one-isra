@@ -187,7 +187,11 @@ struct NodesSettingsSection: View {
         let manualAdd = autoAddMode != .all
 
         // Save manualAddContacts (works on all firmware versions)
-        try await settingsService.setOtherParamsVerified(autoAddContacts: !manualAdd)
+        #if ISRA // isra: the other fields of the record are re-read first, never stale
+          try await IsraRadioWrites.otherParams(settingsService, autoAddContacts: !manualAdd)
+        #else
+          try await settingsService.setOtherParamsVerified(autoAddContacts: !manualAdd)
+        #endif
 
         // Save autoAddConfig only on v1.12+ firmware
         if device.supportsAutoAddConfig {
