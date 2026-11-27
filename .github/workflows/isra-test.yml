@@ -23,13 +23,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Escolher o Xcode 27
+      - name: Escolher o Xcode mais recente
         run: |
-          ls -d /Applications/Xcode*.app
-          X=$(ls -d /Applications/Xcode_27*.app 2>/dev/null | sort -V | tail -1)
-          [ -n "$X" ] || { echo "::error::este runner não tem Xcode 27 (o projeto pede Swift 6.2 e Xcode 27)"; exit 1; }
+          ls -d /Applications/Xcode_*.app
+          # the upstream builds with Xcode 27 on its own runner; GitHub's runner may only
+          # have 26.x (Swift 6.2 is enough for the packages and the app)
+          X=$(ls -d /Applications/Xcode_*.app | sed -E 's|.*/Xcode_([0-9.]+)\.app|\1 &|' | sort -V | tail -1 | cut -d' ' -f2)
           sudo xcode-select -s "$X/Contents/Developer"
           xcodebuild -version
+          case "$X" in *Xcode_27*) ;; *) echo "::warning::sem Xcode 27 neste runner; a usar $X" ;; esac
 
       - name: XcodeGen
         run: command -v xcodegen || brew install xcodegen
