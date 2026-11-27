@@ -29,6 +29,17 @@ struct IsraRadioWriteDecoderTests {
   }
 
   @Test
+  func `a message scope is logged only when it names a region`() {
+    var decoder = IsraRadioWriteDecoder()
+    #expect(decoder.decodeOutgoing(PacketBuilder.setFloodScope(Data(count: 16))) == nil)
+    #expect(decoder.decodeOutgoing(PacketBuilder.setFloodScopeUnscoped()) == nil)
+    let key = Data([0xab, 0xcd, 0x01, 0x02] + Array(repeating: UInt8(7), count: 12))
+    let decoded = decoder.decodeOutgoing(PacketBuilder.setFloodScope(key))
+    #expect(decoded?.kind == "messageScope")
+    #expect(decoded?.change?.contains("abcd0102") == true)
+  }
+
+  @Test
   func `other params with the same values are flagged as a re-send`() {
     var decoder = IsraRadioWriteDecoder()
     decoder.observeIncoming(.selfInfo(selfInfo()))

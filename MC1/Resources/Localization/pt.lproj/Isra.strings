@@ -130,6 +130,8 @@
 "Isra.Tools.Journal.What.autoAdd" = "Adição automática de contactos";
 "Isra.Tools.Journal.What.pathHashMode" = "Tamanho do hash dos caminhos";
 "Isra.Tools.Journal.What.defaultScope" = "Âmbito de inundação predefinido";
+"Isra.Tools.Journal.What.messageScope" = "Âmbito da próxima mensagem";
+"Isra.Tools.Journal.Value.scopeKey" = "região %@…";
 "Isra.Tools.Journal.What.cliSet" = "CLI set %@";
 "Isra.Tools.Journal.What.cli" = "Comando na CLI";
 "Isra.Tools.Journal.Value.key" = "chave";

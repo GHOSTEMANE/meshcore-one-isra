@@ -130,6 +130,8 @@
 "Isra.Tools.Journal.What.autoAdd" = "Auto-add contacts";
 "Isra.Tools.Journal.What.pathHashMode" = "Path hash size";
 "Isra.Tools.Journal.What.defaultScope" = "Default flood scope";
+"Isra.Tools.Journal.What.messageScope" = "Scope of the next message";
+"Isra.Tools.Journal.Value.scopeKey" = "region %@…";
 "Isra.Tools.Journal.What.cliSet" = "CLI set %@";
 "Isra.Tools.Journal.What.cli" = "CLI command";
 "Isra.Tools.Journal.Value.key" = "key";

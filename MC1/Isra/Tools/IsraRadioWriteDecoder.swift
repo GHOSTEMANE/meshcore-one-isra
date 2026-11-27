@@ -145,6 +145,7 @@ struct IsraRadioWriteDecoder {
     case .setAutoAddConfig: return decodeAutoAdd(body)
     case .setPathHashMode: return decodePathHashMode(body)
     case .setDefaultFloodScope: return decodeDefaultScope(body)
+    case .setFloodScope: return decodeMessageScope(body)
     case .runCliCommand: return decodeCLI(body)
     default: return nil
     }
@@ -360,6 +361,17 @@ struct IsraRadioWriteDecoder {
       change: Self.arrow(cache.pathHashMode.map(fmt), fmt(mode)),
       onSuccess: { $0.pathHashMode = mode }
     )
+  }
+
+  /// CMD 54, sent before channel messages. Only a region key is logged: sub-command 0 with a
+  /// zero key (back to the radio's default) or 1 (unscoped) restricts nothing and goes with
+  /// every message, so it would only fill the journal.
+  private func decodeMessageScope(_ body: Data.SubSequence) -> Decoded? {
+    guard body.first == 0 else { return nil }
+    let key = body.dropFirst().prefix(16)
+    guard key.count == 16, key.contains(where: { $0 != 0 }) else { return nil }
+    let hex = key.prefix(4).map { String(format: "%02x", $0) }.joined()
+    return Decoded(kind: "messageScope", what: L("Journal.What.messageScope"), change: L("Journal.Value.scopeKey", hex))
   }
 
   private func decodeDefaultScope(_ body: Data.SubSequence) -> Decoded {
