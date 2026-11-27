@@ -2,7 +2,8 @@ name: isra - nova versão da MeshCore One?
 
 # Todos os dias vê se a MeshCore One lançou uma versão nova. Se sim, tenta reaplicar a
 # isra por cima dela, só aqui dentro (nada é enviado nem instalado), e abre uma
-# issue a dizer se reaplica sem conflitos ou onde choca.
+# issue a dizer se reaplica sem conflitos ou onde choca. Depois de reaplicar à mão,
+# isra/ci-test.sh no Mac (ou a Action "isra - testar e compilar") confirma os testes.
 
 on:
   schedule:
