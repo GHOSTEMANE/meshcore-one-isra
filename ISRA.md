@@ -114,6 +114,8 @@ Só uma app pode estar ligada ao rádio de cada vez: fechar a MeshCore One da Ap
 
 Simulador (sem conta): `isra/build.sh sim`.
 
+`.ipa` sem assinatura, para instalar com uma ferramenta de sideload (que o assina com o Apple ID): `isra/build.sh ipa` (fica em `isra/build/`).
+
 ## Testes
 
 `isra/ci-test.sh` corre tudo no Mac: os testes do pacote MeshCore (todos), os testes isra do MC1Services, a app compilada para o simulador e as suites `MC1Tests/Isra` uma a uma (recusa uma suite que corra zero testes). `isra/ci-test.sh packages` ou `isra/ci-test.sh app` correm só uma parte.
@@ -122,7 +124,7 @@ A Action **isra - testar e compilar** faz o mesmo a cada envio para o ramo `isra
 
 ## Quando sai uma versão nova da MeshCore One
 
-A Action **isra - nova versão da MeshCore One?** vê todos os dias se saiu versão nova. Se sim, tenta reaplicar a `isra` por cima, só dentro da Action, e abre uma issue a dizer se reaplica sem conflitos ou onde choca. Não envia nem instala nada.
+A Action **isra - nova versão da MeshCore One?** vê todos os dias se saiu versão nova. Se sim, tenta reaplicar a `isra` por cima, só dentro da Action. Com conflitos, abre uma issue a dizer onde choca. Sem conflitos, corre os testes (`isra/ci-test.sh`), faz o `.ipa` sem assinatura (`isra/build.sh ipa`) e abre uma issue com a ligação para o descarregar (artefacto da execução, 30 dias) e o SHA-256; a issue chega por email. O ramo `isra` não muda e nada é instalado: instala-se com a ferramenta de sideload e depois atualiza-se o ramo (ver abaixo). Para ver o caminho todo a funcionar: Run workflow com "teste" ligado (compila sobre a versão atual; issue com "[teste]").
 
 À mão:
 

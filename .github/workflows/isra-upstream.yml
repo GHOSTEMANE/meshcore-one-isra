@@ -1,14 +1,23 @@
 name: isra - nova versão da MeshCore One?
 
-# Todos os dias vê se a MeshCore One lançou uma versão nova. Se sim, tenta reaplicar a
-# isra por cima dela, só aqui dentro (nada é enviado nem instalado), e abre uma
-# issue a dizer se reaplica sem conflitos ou onde choca. Depois de reaplicar à mão,
-# isra/ci-test.sh no Mac (ou a Action "isra - testar e compilar") confirma os testes.
+# Todos os dias vê se a MeshCore One lançou uma versão nova. Se sim, tenta reaplicar
+# a isra por cima dela, só aqui dentro (o ramo isra não muda e nada é instalado).
+# - Com conflitos: abre uma issue a dizer onde choca.
+# - Sem conflitos: corre os testes (isra/ci-test.sh), faz o .ipa sem assinatura
+#   (isra/build.sh ipa) e abre uma issue com a ligação para o descarregar
+#   (artefacto da execução, 30 dias). A issue chega por email.
+# À mão (Run workflow) com "teste" ligado: faz o mesmo sobre a versão atual, para
+# ver o caminho todo a funcionar (issue com "[teste]" no título).
 
 on:
   schedule:
     - cron: '37 6 * * *'
   workflow_dispatch:
+    inputs:
+      teste:
+        description: 'Teste: compilar sobre a versão atual e abrir a issue'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -17,6 +26,11 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    outputs:
+      new: ${{ steps.r.outputs.new }}
+      base: ${{ steps.r.outputs.base }}
+      title: ${{ steps.r.outputs.title }}
+      status: ${{ steps.r.outputs.status }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -24,43 +38,126 @@ jobs:
           fetch-depth: 0
 
       - name: Ver a última versão e reaplicar a isra por cima
+        id: r
         env:
           GH_TOKEN: ${{ github.token }}
+          TESTE: ${{ inputs.teste }}
         run: |
           git remote add avi0n https://github.com/Avi0n/MeshCoreOne.git
           git fetch -q avi0n --tags
           BASE=$(cat .isra-base)
           NEW=$(git tag -l 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
           echo "isra sobre $BASE; última versão da MeshCore One: $NEW"
-          [ "$NEW" = "$BASE" ] && { echo "Sem versão nova."; exit 0; }
-
           TITLE="MeshCore One $NEW saiu: reaplicar a isra"
-          if gh issue list --state all --limit 200 --json title --jq '.[].title' | grep -Fxq "$TITLE"; then
-            echo "A issue já existe."; exit 0
+          if [ "$TESTE" = "true" ]; then
+            NEW=$BASE; TITLE="[teste] isra sobre a MeshCore One $BASE: compilar e avisar"
+          else
+            [ "$NEW" = "$BASE" ] && { echo "Sem versão nova."; echo "status=none" >> "$GITHUB_OUTPUT"; exit 0; }
+            if gh issue list --state all --limit 200 --json title --jq '.[].title' | grep -Fxq "$TITLE"; then
+              echo "A issue já existe."; echo "status=none" >> "$GITHUB_OUTPUT"; exit 0
+            fi
           fi
+          { echo "new=$NEW"; echo "base=$BASE"; echo "title=$TITLE"; } >> "$GITHUB_OUTPUT"
 
           git config user.name isra-bot
           git config user.email isra-bot@users.noreply.github.com
           BEFORE=$(git log --oneline "$BASE"..HEAD)
           if git rebase --onto "$NEW" "$BASE" HEAD > rebase.log 2>&1; then
-            RES="Reaplica sem conflitos."
-            AFTER=$(git log --oneline "$NEW"..HEAD)
-          else
-            RES="Conflito ao reaplicar, no commit $(git log -1 --oneline REBASE_HEAD 2>/dev/null). Ficheiros:
-          $(git diff --name-only --diff-filter=U)"
-            AFTER="(parou no conflito)"
-            git rebase --abort
+            echo "status=clean" >> "$GITHUB_OUTPUT"
+            echo "Reaplica sem conflitos; os testes e o .ipa seguem no passo seguinte."
+            exit 0
           fi
-
+          echo "status=conflict" >> "$GITHUB_OUTPUT"
+          FILES=$(git diff --name-only --diff-filter=U)
+          AT=$(git log -1 --oneline REBASE_HEAD 2>/dev/null)
+          git rebase --abort
           {
             echo "A versão oficial **$NEW** saiu. A isra está sobre **$BASE**."
             echo
-            echo "$RES"
-            echo
-            echo "Commits da isra antes:"
+            echo "**Conflito ao reaplicar**, no commit $AT. Ficheiros:"
+            echo '```'; echo "$FILES"; echo '```'
+            echo "Commits da isra:"
             echo '```'; echo "$BEFORE"; echo '```'
-            echo "Depois de reaplicar (os que a MeshCore One já tem desaparecem):"
-            echo '```'; echo "$AFTER"; echo '```'
             echo "Nada foi enviado nem instalado. Ver o ISRA.md, secção \"Quando sai uma versão nova da MeshCore One\"."
+          } > body.md
+          gh issue create --title "$TITLE" --body-file body.md
+
+  build:
+    needs: check
+    if: needs.check.outputs.status == 'clean'
+    runs-on: xcode-27   # GitHub runner with Xcode 27 (public preview); the upstream code needs it
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: isra
+          fetch-depth: 0
+
+      - name: Reaplicar a isra sobre ${{ needs.check.outputs.new }}
+        env:
+          NEW: ${{ needs.check.outputs.new }}
+          BASE: ${{ needs.check.outputs.base }}
+        run: |
+          git remote add avi0n https://github.com/Avi0n/MeshCoreOne.git
+          git fetch -q avi0n --tags
+          git config user.name isra-bot
+          git config user.email isra-bot@users.noreply.github.com
+          git rebase --onto "$NEW" "$BASE" HEAD
+          git log --oneline "$NEW"..HEAD > "$RUNNER_TEMP/isra-commits.txt"
+
+      - name: Escolher o Xcode 27
+        run: |
+          X=$(ls -d /Applications/Xcode_*.app | sed -E 's|.*/Xcode_([0-9.]+)\.app|\1 &|' | sort -V | tail -1 | cut -d' ' -f2)
+          sudo xcode-select -s "$X/Contents/Developer"
+          xcodebuild -version
+          case "$X" in *Xcode_27*) ;; *) echo "::error::sem Xcode 27 neste runner ($X)"; exit 1 ;; esac
+
+      - name: XcodeGen
+        run: command -v xcodegen || brew install xcodegen
+
+      - name: Testes
+        run: isra/ci-test.sh
+
+      - name: .ipa sem assinatura
+        run: |
+          IPA=$(isra/build.sh ipa | tail -1)
+          ls -la "$IPA"
+          (cd "$(dirname "$IPA")" && shasum -a 256 "$(basename "$IPA")") | tee "$RUNNER_TEMP/ipa.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ipa-isra-sobre-${{ needs.check.outputs.new }}
+          path: isra/build/*.ipa
+          retention-days: 30
+
+      - name: Abrir a issue
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NEW: ${{ needs.check.outputs.new }}
+          BASE: ${{ needs.check.outputs.base }}
+          TITLE: ${{ needs.check.outputs.title }}
+          OK: ${{ job.status }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            echo "A versão oficial **$NEW** está disponível. A isra está sobre **$BASE**."
+            echo
+            if [ "$OK" = "success" ]; then
+              echo "**Reaplica sem conflitos, os testes passam e o .ipa está pronto.**"
+              echo
+              echo "Descarregar: $RUN (fundo da página, artefacto \`ipa-isra-sobre-$NEW\`, 30 dias; vem dentro de um .zip)."
+              echo
+              echo "SHA-256:"
+              echo '```'; cat "$RUNNER_TEMP/ipa.sha256" 2>/dev/null; echo '```'
+              echo "Instalar com a mesma ferramenta de sempre (assina com o Apple ID). Fica por cima da MC1 isra, com os dados."
+              echo "Se o rádio também precisar de firmware novo, a issue do solo-isra diz."
+            else
+              echo "**Reaplica sem conflitos, mas os testes ou a compilação falharam.** Ver: $RUN"
+            fi
+            echo
+            echo "Commits da isra depois de reaplicar:"
+            echo '```'; cat "$RUNNER_TEMP/isra-commits.txt" 2>/dev/null; echo '```'
+            echo "O ramo isra não mudou. Depois de instalar e testar, pedir para atualizar o ramo isra para esta versão."
           } > body.md
           gh issue create --title "$TITLE" --body-file body.md

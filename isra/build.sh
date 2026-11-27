@@ -6,6 +6,8 @@
 #   isra/build.sh phone      build signed with your Apple ID and install on the
 #                            iPhone connected by cable (also the weekly re-sign
 #                            for a free account: same bundle ID, data is kept)
+#   isra/build.sh ipa        unsigned Release .ipa in isra/build/ (to install with a
+#                            sideloading tool that signs it with your Apple ID)
 #
 # Signing: dev.yml (gitignored) holds your team ID:
 #   settings:
@@ -49,5 +51,16 @@ for x in d.get('result',{}).get('devices',[]):
     xcrun devicectl device install app --device "$DEV" "$APP"
     echo "installed; a free account's install expires in 7 days: run this again before then"
     ;;
-  *) sed -n '2,15p' "$0"; exit 1 ;;
+  ipa)
+    generate
+    xcodebuild -project MC1.xcodeproj -scheme MC1 -configuration Release \
+      -destination 'generic/platform=iOS' -derivedDataPath "$DD" \
+      CODE_SIGNING_ALLOWED=NO build | tail -3
+    APP="$DD/Build/Products/Release-iphoneos/MC1.app"
+    OUT="$PWD/isra/build/MC1-isra-$(cat .isra-version)-$(git rev-parse --short=8 HEAD).ipa"
+    T=$(mktemp -d); mkdir "$T/Payload"; cp -R "$APP" "$T/Payload/"
+    rm -f "$OUT"; (cd "$T" && zip -qry "$OUT" Payload); rm -rf "$T"
+    echo "$OUT"
+    ;;
+  *) sed -n '2,17p' "$0"; exit 1 ;;
 esac
