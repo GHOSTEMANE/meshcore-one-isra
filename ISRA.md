@@ -114,6 +114,12 @@ Só uma app pode estar ligada ao rádio de cada vez: fechar a MeshCore One da Ap
 
 Simulador (sem conta): `isra/build.sh sim`.
 
+## Testes
+
+`isra/ci-test.sh` corre tudo no Mac: os testes do pacote MeshCore (todos), os testes isra do MC1Services, a app compilada para o simulador e as suites `MC1Tests/Isra` uma a uma (recusa uma suite que corra zero testes). `isra/ci-test.sh packages` ou `isra/ci-test.sh app` correm só uma parte.
+
+A Action **isra - testar e compilar** faz o mesmo a cada envio para o ramo `isra` (runner macOS do GitHub, grátis num repositório público). Nada é assinado, enviado nem instalado; o resultado vê-se no separador Actions.
+
 ## Quando sai uma versão nova da MeshCore One
 
 A Action **isra - nova versão da MeshCore One?** vê todos os dias se saiu versão nova. Se sim, tenta reaplicar a `isra` por cima, só dentro da Action, e abre uma issue a dizer se reaplica sem conflitos ou onde choca. Não envia nem instala nada.
@@ -127,7 +133,7 @@ git fetch avi0n --tags
 git checkout isra
 git rebase --onto vX.Y.Z "$(cat .isra-base)" isra
 echo vX.Y.Z > .isra-base ; echo vX.Y.Z-isra1 > .isra-version
-isra/build.sh sim      # compila?
+isra/ci-test.sh        # compila e os testes passam?
 ```
 
 Depois: testar, rever este ficheiro, `git push --force-with-lease origin isra`, e `isra/build.sh phone`.

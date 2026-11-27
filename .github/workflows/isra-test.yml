@@ -1,0 +1,41 @@
+name: isra - testar e compilar
+
+# A cada envio para o ramo isra: testes do MeshCore (todos), testes isra do MC1Services,
+# compilação da app para o simulador e testes isra da app (MC1Tests/Isra).
+# Os mesmos passos que isra/ci-test.sh no Mac. Nada é assinado, enviado nem instalado.
+
+on:
+  push:
+    branches: [isra]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: macos-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Escolher o Xcode 27
+        run: |
+          ls -d /Applications/Xcode*.app
+          X=$(ls -d /Applications/Xcode_27*.app 2>/dev/null | sort -V | tail -1)
+          [ -n "$X" ] || { echo "::error::este runner não tem Xcode 27 (o projeto pede Swift 6.2 e Xcode 27)"; exit 1; }
+          sudo xcode-select -s "$X/Contents/Developer"
+          xcodebuild -version
+
+      - name: XcodeGen
+        run: command -v xcodegen || brew install xcodegen
+
+      - name: Testes dos pacotes (MeshCore, MC1Services isra)
+        run: isra/ci-test.sh packages
+
+      - name: App no simulador e testes isra da app
+        run: isra/ci-test.sh app
